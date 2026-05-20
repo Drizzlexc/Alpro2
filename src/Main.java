@@ -1,118 +1,310 @@
-import java.util.Scanner;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.WindowConstants;
 
 public class Main {
-    private static final Scanner SCANNER = new Scanner(System.in);
+    private static final DecimalFormat FORMAT = createFormatter();
 
     public static void main(String[] args) {
-        System.out.println("Kalkulator Java");
-        System.out.println("=================");
+        SwingUtilities.invokeLater(Main::createAndShowUi);
+    }
 
-        while (true) {
-            printMenu();
-            System.out.print("Pilih menu (1-6) atau q untuk keluar: ");
-            String choice = SCANNER.nextLine().trim();
+    private static void createAndShowUi() {
+        JFrame frame = new JFrame("Kalkulator Java");
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        frame.setMinimumSize(new Dimension(320, 480));
 
-            if (choice.equalsIgnoreCase("q")) {
-                break;
-            }
+        JTextField display = new JTextField("0");
+        display.setEditable(false);
+        display.setHorizontalAlignment(SwingConstants.RIGHT);
+        display.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        display.setBorder(BorderFactory.createEmptyBorder(16, 12, 16, 12));
+        display.setBackground(Color.WHITE);
 
-            try {
-                switch (choice) {
-                    case "1":
-                        binaryOp("+");
-                        break;
-                    case "2":
-                        binaryOp("-");
-                        break;
-                    case "3":
-                        binaryOp("*");
-                        break;
-                    case "4":
-                        binaryOp("/");
-                        break;
-                    case "5":
-                        binaryOp("%");
-                        break;
-                    case "6":
-                        binaryOp("^");
-                        break;
-                    default:
-                        System.out.println("Pilihan tidak dikenal. Coba lagi.");
-                        break;
+        JPanel displayPanel = new JPanel(new BorderLayout());
+        displayPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 8, 12));
+        displayPanel.setBackground(new Color(242, 242, 242));
+        displayPanel.add(display, BorderLayout.CENTER);
+
+        JPanel grid = new JPanel(new GridLayout(5, 4, 10, 10));
+        grid.setBorder(BorderFactory.createEmptyBorder(8, 12, 12, 12));
+        grid.setBackground(new Color(242, 242, 242));
+
+        double[] storedValue = {0.0};
+        String[] pendingOp = {null};
+        boolean[] startNewNumber = {true};
+
+        String[][] rows = new String[][] {
+            {"C", "DEL", "%", "/"},
+            {"7", "8", "9", "*"},
+            {"4", "5", "6", "-"},
+            {"1", "2", "3", "+"},
+            {"+/-", "0", ".", "="}
+        };
+
+        Font buttonFont = new Font("Segoe UI", Font.BOLD, 18);
+        Color numberBg = Color.WHITE;
+        Color opBg = new Color(255, 149, 0);
+        Color opFg = Color.WHITE;
+        Color controlBg = new Color(226, 226, 226);
+
+        for (String[] row : rows) {
+            for (String label : row) {
+                JButton button = new JButton(label);
+                button.setFont(buttonFont);
+                button.setFocusPainted(false);
+                button.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+                if (label.matches("[0-9]")) {
+                    button.setBackground(numberBg);
+                } else if (label.equals("=") || label.equals("+") || label.equals("-") || label.equals("*")
+                    || label.equals("/") || label.equals("%")) {
+                    button.setBackground(opBg);
+                    button.setForeground(opFg);
+                } else {
+                    button.setBackground(controlBg);
                 }
-            } catch (IllegalArgumentException ex) {
-                System.out.println("Input tidak valid: " + ex.getMessage());
-            }
 
-            System.out.println();
+                button.addActionListener(event -> {
+                    handleButton(
+                        label,
+                        display,
+                        storedValue,
+                        pendingOp,
+                        startNewNumber,
+                        frame
+                    );
+                });
+
+                grid.add(button);
+            }
         }
 
-        System.out.println("Sampai jumpa!");
+        JPanel content = new JPanel(new BorderLayout());
+        content.setBackground(new Color(242, 242, 242));
+        content.add(displayPanel, BorderLayout.NORTH);
+        content.add(grid, BorderLayout.CENTER);
+
+        frame.setContentPane(content);
+        frame.pack();
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
     }
 
-    private static void printMenu() {
-        System.out.println();
-        System.out.println("Menu:");
-        System.out.println("1. Tambah");
-        System.out.println("2. Kurang");
-        System.out.println("3. Kali");
-        System.out.println("4. Bagi");
-        System.out.println("5. Modulus");
-        System.out.println("6. Pangkat");
+    private static void handleButton(
+        String label,
+        JTextField display,
+        double[] storedValue,
+        String[] pendingOp,
+        boolean[] startNewNumber,
+        JFrame frame
+    ) {
+        if (label.matches("[0-9]")) {
+            appendDigit(display, label, startNewNumber);
+            return;
+        }
+
+        switch (label) {
+            case ".":
+                appendDecimal(display, startNewNumber);
+                return;
+            case "+/-":
+                toggleSign(display, startNewNumber);
+                return;
+            case "C":
+                display.setText("0");
+                storedValue[0] = 0.0;
+                pendingOp[0] = null;
+                startNewNumber[0] = true;
+                return;
+            case "DEL":
+                deleteLast(display, startNewNumber);
+                return;
+            case "=":
+                try {
+                    applyEquals(display, storedValue, pendingOp, startNewNumber);
+                } catch (IllegalArgumentException ex) {
+                    showError(frame, ex.getMessage());
+                    display.setText("0");
+                    storedValue[0] = 0.0;
+                    pendingOp[0] = null;
+                    startNewNumber[0] = true;
+                }
+                return;
+            default:
+                if (label.equals("+") || label.equals("-") || label.equals("*")
+                    || label.equals("/") || label.equals("%")) {
+                    try {
+                        applyOperator(label, display, storedValue, pendingOp, startNewNumber);
+                    } catch (IllegalArgumentException ex) {
+                        showError(frame, ex.getMessage());
+                        display.setText("0");
+                        storedValue[0] = 0.0;
+                        pendingOp[0] = null;
+                        startNewNumber[0] = true;
+                    }
+                }
+                return;
+        }
     }
 
-    private static void binaryOp(String op) {
-        double a = readDouble("Angka pertama: ");
-        double b = readDouble("Angka kedua: ");
-        double result;
+    private static void appendDigit(JTextField display, String digit, boolean[] startNewNumber) {
+        String current = display.getText();
+        if (startNewNumber[0]) {
+            display.setText(digit.equals("0") ? "0" : digit);
+            startNewNumber[0] = false;
+            return;
+        }
 
+        if (current.equals("0")) {
+            display.setText(digit);
+        } else {
+            display.setText(current + digit);
+        }
+    }
+
+    private static void appendDecimal(JTextField display, boolean[] startNewNumber) {
+        String current = display.getText();
+        if (startNewNumber[0]) {
+            display.setText("0.");
+            startNewNumber[0] = false;
+            return;
+        }
+
+        if (!current.contains(".")) {
+            display.setText(current + ".");
+        }
+    }
+
+    private static void toggleSign(JTextField display, boolean[] startNewNumber) {
+        String current = display.getText();
+        if (current.equals("0")) {
+            return;
+        }
+
+        if (current.startsWith("-")) {
+            display.setText(current.substring(1));
+        } else {
+            display.setText("-" + current);
+        }
+        startNewNumber[0] = false;
+    }
+
+    private static void deleteLast(JTextField display, boolean[] startNewNumber) {
+        String current = display.getText();
+        if (startNewNumber[0] || current.length() <= 1) {
+            display.setText("0");
+            startNewNumber[0] = true;
+            return;
+        }
+
+        String next = current.substring(0, current.length() - 1);
+        if (next.equals("-") || next.isEmpty()) {
+            display.setText("0");
+            startNewNumber[0] = true;
+        } else {
+            display.setText(next);
+        }
+    }
+
+    private static void applyOperator(
+        String op,
+        JTextField display,
+        double[] storedValue,
+        String[] pendingOp,
+        boolean[] startNewNumber
+    ) {
+        double current = parseDisplay(display.getText());
+        if (pendingOp[0] != null && !startNewNumber[0]) {
+            storedValue[0] = applyBinary(storedValue[0], current, pendingOp[0]);
+            display.setText(formatValue(storedValue[0]));
+        } else if (pendingOp[0] == null) {
+            storedValue[0] = current;
+        }
+
+        pendingOp[0] = op;
+        startNewNumber[0] = true;
+    }
+
+    private static void applyEquals(
+        JTextField display,
+        double[] storedValue,
+        String[] pendingOp,
+        boolean[] startNewNumber
+    ) {
+        if (pendingOp[0] == null) {
+            return;
+        }
+
+        double current = parseDisplay(display.getText());
+        storedValue[0] = applyBinary(storedValue[0], current, pendingOp[0]);
+        display.setText(formatValue(storedValue[0]));
+        pendingOp[0] = null;
+        startNewNumber[0] = true;
+    }
+
+    private static double parseDisplay(String value) {
+        String trimmed = value == null ? "0" : value.trim();
+        if (trimmed.isEmpty() || trimmed.equals("-")) {
+            return 0.0;
+        }
+        return Double.parseDouble(trimmed.replace(',', '.'));
+    }
+
+    private static double applyBinary(double a, double b, String op) {
         switch (op) {
             case "+":
-                result = a + b;
-                break;
+                return a + b;
             case "-":
-                result = a - b;
-                break;
+                return a - b;
             case "*":
-                result = a * b;
-                break;
+                return a * b;
             case "/":
                 if (b == 0.0) {
-                    throw new IllegalArgumentException("pembagian oleh 0");
+                    throw new IllegalArgumentException("Pembagian oleh 0");
                 }
-                result = a / b;
-                break;
+                return a / b;
             case "%":
                 if (b == 0.0) {
-                    throw new IllegalArgumentException("modulus oleh 0");
+                    throw new IllegalArgumentException("Modulus oleh 0");
                 }
-                result = a % b;
-                break;
-            case "^":
-                result = Math.pow(a, b);
-                break;
+                return a % b;
             default:
-                throw new IllegalArgumentException("operasi tidak didukung");
+                throw new IllegalArgumentException("Operasi tidak didukung");
         }
-
-        System.out.println("Hasil: " + result);
     }
 
-    private static double readDouble(String prompt) {
-        while (true) {
-            System.out.print(prompt);
-            String input = SCANNER.nextLine().trim();
+    private static String formatValue(double value) {
+        return FORMAT.format(value);
+    }
 
-            if (input.isEmpty()) {
-                System.out.println("Input kosong. Masukkan angka.");
-                continue;
-            }
+    private static void showError(JFrame frame, String message) {
+        JOptionPane.showMessageDialog(
+            frame,
+            message,
+            "Input tidak valid",
+            JOptionPane.WARNING_MESSAGE
+        );
+    }
 
-            try {
-                return Double.parseDouble(input.replace(',', '.'));
-            } catch (NumberFormatException ex) {
-                System.out.println("Masukkan angka yang valid.");
-            }
-        }
+    private static DecimalFormat createFormatter() {
+        DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);
+        DecimalFormat format = new DecimalFormat("0.##########", symbols);
+        format.setGroupingUsed(false);
+        return format;
     }
 }
