@@ -878,7 +878,7 @@ class SudokuGameFrame extends JFrame {
         String winner = playerName == null || playerName.isEmpty() ? "Pemain" : playerName;
         String duration = formatDuration(elapsedSeconds);
 
-        JDialog dialog = new JDialog(this, "Selesai", true);
+        JDialog dialog = new JDialog(this, "Selesai", false);
         dialog.setUndecorated(true);
         dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
@@ -929,7 +929,7 @@ class SudokuGameFrame extends JFrame {
         exitButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         exitButton.addActionListener(event -> {
             dialog.dispose();
-            dispose();
+            System.exit(0);
         });
 
         overlay.add(Box.createVerticalGlue());
@@ -954,11 +954,12 @@ class SudokuGameFrame extends JFrame {
         );
 
         dialog.setContentPane(overlay);
+        dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
 
     private void showLoseOverlay() {
-        JDialog dialog = new JDialog(this, "Game Selesai", true);
+        JDialog dialog = new JDialog(this, "Game Selesai", false);
         dialog.setUndecorated(true);
         dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
@@ -995,7 +996,7 @@ class SudokuGameFrame extends JFrame {
         exitButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         exitButton.addActionListener(event -> {
             dialog.dispose();
-            dispose();
+            System.exit(0);
         });
 
         overlay.add(Box.createVerticalGlue());
@@ -1014,6 +1015,7 @@ class SudokuGameFrame extends JFrame {
         );
 
         dialog.setContentPane(overlay);
+        dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
 
