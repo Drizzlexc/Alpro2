@@ -54,6 +54,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+import javax.swing.JSeparator;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
@@ -145,14 +146,25 @@ class SudokuGameFrame extends JFrame {
 
     public SudokuGameFrame() {
         setTitle("Sudoku Classic");
-        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         setMinimumSize(new Dimension(960, 720));
+
+        // Prevent accidental closing
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                // Only allow close from menu exit button
+                if (isShowingMenu()) {
+                    shutdownApplication();
+                }
+            }
+        });
 
         viewLayout = new CardLayout();
         rootPanel = new JPanel(viewLayout);
         menuPanel = new SudokuMenuPanel();
         menuPanel.setStartAction(event -> startFromMenu());
-        menuPanel.setExitAction(event -> dispose());
+        menuPanel.setExitAction(event -> shutdownApplication());
         gamePanel = buildGamePanel();
 
         rootPanel.add(menuPanel, "menu");
@@ -188,7 +200,6 @@ class SudokuGameFrame extends JFrame {
         device.setFullScreenWindow(null);
         fullScreenActive = false;
         boolean wasVisible = isVisible();
-        dispose();
         setUndecorated(false);
         setResizable(true);
         if (wasVisible) {
@@ -338,7 +349,18 @@ class SudokuGameFrame extends JFrame {
 
     private void showMenu() {
         stopTimer();
+        gamePanel.setEnabled(true);
         viewLayout.show(rootPanel, "menu");
+    }
+
+    private boolean isShowingMenu() {
+        return rootPanel.getComponent(0) == menuPanel && menuPanel.isVisible();
+    }
+
+    private void shutdownApplication() {
+        stopTimer();
+        exitFullScreen();
+        dispose();
     }
 
     private void startNewGame(SudokuDifficulty difficulty) {
@@ -853,66 +875,69 @@ class SudokuGameFrame extends JFrame {
     }
 
     private void animateOverlayText(JLabel[] labels, Color[] colors) {
+        // Set colors immediately without animation to avoid crash
         for (int i = 0; i < labels.length; i++) {
-            Color base = colors[i];
-            labels[i].setForeground(new Color(base.getRed(), base.getGreen(), base.getBlue(), 0));
+            labels[i].setForeground(colors[i]);
         }
-
-        Timer fadeTimer = new Timer(40, null);
-        final int[] step = {0};
-        fadeTimer.addActionListener(event -> {
-            step[0]++;
-            int alpha = Math.min(255, step[0] * 25);
-            for (int i = 0; i < labels.length; i++) {
-                Color base = colors[i];
-                labels[i].setForeground(new Color(base.getRed(), base.getGreen(), base.getBlue(), alpha));
-            }
-            if (alpha >= 255) {
-                fadeTimer.stop();
-            }
-        });
-        fadeTimer.start();
     }
 
     private void showWinOverlay() {
         String winner = playerName == null || playerName.isEmpty() ? "Pemain" : playerName;
         String duration = formatDuration(elapsedSeconds);
 
-        JDialog dialog = new JDialog(this, "Selesai", false);
+        JDialog dialog = new JDialog(this, "Selesai", true);
         dialog.setUndecorated(true);
-        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        dialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         dialog.setSize(screen);
-        dialog.setLocationRelativeTo(this);
+        dialog.setLocationRelativeTo(null);
+        
+        // Disable parent frame interaction
+        gamePanel.setEnabled(false);
+        
+        // Prevent accidental closing
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                // Do nothing - prevent accidental close
+            }
+        });
 
         SudokuGradientPanel overlay = new SudokuGradientPanel(
             new Color(77, 90, 56),
             new Color(164, 170, 108)
         );
         overlay.setLayout(new BoxLayout(overlay, BoxLayout.Y_AXIS));
-        overlay.setBorder(BorderFactory.createEmptyBorder(80, 40, 80, 40));
+        overlay.setBorder(BorderFactory.createEmptyBorder(100, 50, 100, 50));
 
-        JLabel title = new JLabel("SELAMAT \"" + winner + "\"");
-        title.setFont(new Font("Georgia", Font.BOLD, 46));
+        JLabel title = new JLabel("🎉 SELAMAT 🎉");
+        title.setFont(new Font("Blockhead", Font.BOLD, 52));
         title.setForeground(TEXT_ON_DARK);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        JLabel winnerLabel = new JLabel("Pemain: " + winner);
+        winnerLabel.setFont(new Font("Blockhead", Font.BOLD, 32));
+        winnerLabel.setForeground(new Color(255, 215, 0));
+        winnerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         JLabel subtitle = new JLabel("Anda Berhasil Menyelesaikan SUDOKU");
-        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 20));
+        subtitle.setFont(new Font("Blockhead", Font.BOLD, 22));
         subtitle.setForeground(new Color(248, 243, 223));
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel time = new JLabel("Dalam Waktu \"" + duration + "\"");
-        time.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        time.setForeground(new Color(252, 248, 235));
+        JLabel time = new JLabel("⏱️ Waktu: " + duration);
+        time.setFont(new Font("Blockhead", Font.BOLD, 20));
+        time.setForeground(new Color(200, 255, 200));
         time.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JPanel leaderboardPanel = buildLeaderboardPanel();
 
         JButton playAgainButton = createButton("Main Lagi", ACCENT, Color.WHITE);
         playAgainButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        playAgainButton.setFont(new Font("Blockhead", Font.BOLD, 18));
         playAgainButton.addActionListener(event -> {
             SudokuDifficulty difficulty = state == null ? SudokuDifficulty.MEDIUM : state.difficulty;
+            gamePanel.setEnabled(true);
             dialog.dispose();
             startNewGame(difficulty);
             viewLayout.show(rootPanel, "game");
@@ -920,27 +945,41 @@ class SudokuGameFrame extends JFrame {
 
         JButton menuButton = createButton("Kembali ke Menu", WOOD, Color.WHITE);
         menuButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        menuButton.setFont(new Font("Blockhead", Font.BOLD, 18));
         menuButton.addActionListener(event -> {
+            gamePanel.setEnabled(true);
             dialog.dispose();
             showMenu();
         });
 
         JButton exitButton = createButton("Keluar", new Color(232, 224, 208), new Color(70, 62, 52));
         exitButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        exitButton.setFont(new Font("Blockhead", Font.BOLD, 18));
         exitButton.addActionListener(event -> {
+            gamePanel.setEnabled(true);
             dialog.dispose();
-            System.exit(0);
+            showMenu();
         });
 
         overlay.add(Box.createVerticalGlue());
         overlay.add(title);
+        overlay.add(Box.createVerticalStrut(12));
+        overlay.add(winnerLabel);
         overlay.add(Box.createVerticalStrut(16));
         overlay.add(subtitle);
-        overlay.add(Box.createVerticalStrut(10));
+        overlay.add(Box.createVerticalStrut(12));
         overlay.add(time);
-        overlay.add(Box.createVerticalStrut(18));
+        overlay.add(Box.createVerticalStrut(24));
+        JSeparator sep1 = new JSeparator();
+        sep1.setMaximumSize(new Dimension(Integer.MAX_VALUE, 2));
+        overlay.add(sep1);
+        overlay.add(Box.createVerticalStrut(16));
         overlay.add(leaderboardPanel);
-        overlay.add(Box.createVerticalStrut(20));
+        overlay.add(Box.createVerticalStrut(24));
+        JSeparator sep2 = new JSeparator();
+        sep2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 2));
+        overlay.add(sep2);
+        overlay.add(Box.createVerticalStrut(16));
         overlay.add(playAgainButton);
         overlay.add(Box.createVerticalStrut(10));
         overlay.add(menuButton);
@@ -954,57 +993,95 @@ class SudokuGameFrame extends JFrame {
         );
 
         dialog.setContentPane(overlay);
-        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
         dialog.setVisible(true);
+        gamePanel.setEnabled(true);
     }
 
     private void showLoseOverlay() {
-        JDialog dialog = new JDialog(this, "Game Selesai", false);
+        JDialog dialog = new JDialog(this, "Game Selesai", true);
         dialog.setUndecorated(true);
-        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        dialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         dialog.setSize(screen);
-        dialog.setLocationRelativeTo(this);
+        dialog.setLocationRelativeTo(null);
+        
+        // Disable parent frame interaction
+        gamePanel.setEnabled(false);
+        
+        // Prevent accidental closing
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                // Do nothing - prevent accidental close
+            }
+        });
 
         SudokuGradientPanel overlay = new SudokuGradientPanel(
             new Color(88, 72, 56),
             new Color(169, 146, 110)
         );
         overlay.setLayout(new BoxLayout(overlay, BoxLayout.Y_AXIS));
-        overlay.setBorder(BorderFactory.createEmptyBorder(80, 40, 80, 40));
+        overlay.setBorder(BorderFactory.createEmptyBorder(100, 50, 100, 50));
 
-        JLabel title = new JLabel("GAME SELESAI");
-        title.setFont(new Font("Georgia", Font.BOLD, 46));
+        JLabel title = new JLabel("❌ GAME SELESAI ❌");
+        title.setFont(new Font("Blockhead", Font.BOLD, 52));
         title.setForeground(TEXT_ON_DARK);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel subtitle = new JLabel("Maaf, Anda Gagal Menyelesaikan Game SUDOKU");
-        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 20));
-        subtitle.setForeground(new Color(248, 243, 223));
+        JLabel subtitle = new JLabel("Maaf, Anda Gagal Menyelesaikan Game");
+        subtitle.setFont(new Font("Blockhead", Font.BOLD, 24));
+        subtitle.setForeground(new Color(255, 150, 150));
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel message = new JLabel("Jangan Menyerah! Coba Lagi!");
+        message.setFont(new Font("Blockhead", Font.BOLD, 20));
+        message.setForeground(new Color(248, 243, 223));
+        message.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JButton playAgainButton = createButton("Main Lagi", ACCENT, Color.WHITE);
         playAgainButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        playAgainButton.setFont(new Font("Blockhead", Font.BOLD, 18));
         playAgainButton.addActionListener(event -> {
             SudokuDifficulty difficulty = state == null ? SudokuDifficulty.MEDIUM : state.difficulty;
+            gamePanel.setEnabled(true);
             dialog.dispose();
             startNewGame(difficulty);
             viewLayout.show(rootPanel, "game");
         });
 
+        JButton menuButton = createButton("Kembali ke Menu", WOOD, Color.WHITE);
+        menuButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        menuButton.setFont(new Font("Blockhead", Font.BOLD, 18));
+        menuButton.addActionListener(event -> {
+            gamePanel.setEnabled(true);
+            dialog.dispose();
+            showMenu();
+        });
+
         JButton exitButton = createButton("Keluar", new Color(232, 224, 208), new Color(70, 62, 52));
         exitButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        exitButton.setFont(new Font("Blockhead", Font.BOLD, 18));
         exitButton.addActionListener(event -> {
+            gamePanel.setEnabled(true);
             dialog.dispose();
-            System.exit(0);
+            showMenu();
         });
 
         overlay.add(Box.createVerticalGlue());
         overlay.add(title);
         overlay.add(Box.createVerticalStrut(16));
         overlay.add(subtitle);
-        overlay.add(Box.createVerticalStrut(28));
+        overlay.add(Box.createVerticalStrut(12));
+        overlay.add(message);
+        overlay.add(Box.createVerticalStrut(40));
+        JSeparator sep = new JSeparator();
+        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 2));
+        overlay.add(sep);
+        overlay.add(Box.createVerticalStrut(32));
         overlay.add(playAgainButton);
+        overlay.add(Box.createVerticalStrut(10));
+        overlay.add(menuButton);
         overlay.add(Box.createVerticalStrut(10));
         overlay.add(exitButton);
         overlay.add(Box.createVerticalGlue());
@@ -1015,8 +1092,9 @@ class SudokuGameFrame extends JFrame {
         );
 
         dialog.setContentPane(overlay);
-        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
         dialog.setVisible(true);
+        gamePanel.setEnabled(true);
     }
 
     private void lockBoard() {
