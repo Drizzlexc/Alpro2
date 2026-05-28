@@ -62,47 +62,23 @@ import javax.swing.Timer;
 import javax.swing.WindowConstants;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-class SudokuGameApp {
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            SudokuGameFrame frame = new SudokuGameFrame();
-            frame.setVisible(true);
-        });
-    }
-}
+/**
+ * Sudoku Classic - NetBeans GUI Style
+ * Kelas utama yang mengikuti konvensi struktur NetBeans JFrame Form
+ */
+public class SudokuGame extends javax.swing.JFrame {
 
-enum SudokuDifficulty {
-    EASY("Mudah 4x4", 4, 2, 6),
-    MEDIUM("Sedang 9x9", 9, 3, 40),
-    HIGH("Sulit 16x16", 16, 4, 160);
-
-    private final String label;
-    private final int size;
-    private final int base;
-    private final int removals;
-
-    SudokuDifficulty(String label, int size, int base, int removals) {
-        this.label = label;
-        this.size = size;
-        this.base = base;
-        this.removals = removals;
-    }
-
-    public String getLabel() { return label; }
-    public int getSize()     { return size; }
-    public int getBase()     { return base; }
-    public int getRemovals() { return removals; }
-}
-
-class SudokuGameFrame extends JFrame {
-    private static final Color BACKGROUND    = new Color(227, 224, 204);
-    private static final Color HEADER_START  = new Color(92,  108,  60);
-    private static final Color HEADER_END    = new Color(171, 178, 112);
-    private static final Color ACCENT        = new Color(84,  120,  77);
-    private static final Color TEXT_ON_DARK  = new Color(250, 246, 233);
-    private static final Color TEXT_SUBTLE   = new Color(86,   80,  68);
-    private static final Color GRID_LINE     = new Color(108,  95,  73);
-    private static final Color WOOD          = new Color(176, 136,  92);
+    // =========================================================================
+    // GAME STATE FIELDS (non-UI)
+    // =========================================================================
+    private static final Color BACKGROUND   = new Color(227, 224, 204);
+    private static final Color HEADER_START = new Color(92,  108,  60);
+    private static final Color HEADER_END   = new Color(171, 178, 112);
+    private static final Color ACCENT       = new Color(84,  120,  77);
+    private static final Color TEXT_ON_DARK = new Color(250, 246, 233);
+    private static final Color TEXT_SUBTLE  = new Color(86,   80,  68);
+    private static final Color GRID_LINE    = new Color(108,  95,  73);
+    private static final Color WOOD         = new Color(176, 136,  92);
 
     private SudokuGameBoard    board;
     private SudokuGameState    state;
@@ -112,150 +88,143 @@ class SudokuGameFrame extends JFrame {
     private final SudokuSoundPlayer soundPlayer = new SudokuSoundPlayer();
 
     private SudokuGameCell[][] cells;
-    private JPanel             gridPanel;
-    private final JPanel       gamePanel;
-    private final SudokuMenuPanel menuPanel;
-    private final CardLayout   viewLayout;
-    private final JPanel       rootPanel;
-
-    private JLabel statusLabel;
-    private JLabel difficultyLabel;
-    private JLabel playerLabel;
-    private JLabel timerLabel;
-    private JLabel attemptsLabel;
-
-    private Timer  timer;
+    private Timer  gameTimer;
     private int    elapsedSeconds;
     private int    attemptsRemaining;
     private String playerName   = "Pemain";
     private String selectedSymbol = "";
-
     private final List<JButton> symbolButtons = new ArrayList<>();
     private SudokuGameCell selectedCell;
     private boolean boardLocked;
-
-    // ── FIX 3: track current view with a proper field ─────────────────────────
     private String currentView = "menu";
 
-    public SudokuGameFrame() {
+    // =========================================================================
+    // CONSTRUCTOR
+    // =========================================================================
+    public SudokuGame() {
+        initComponents();
+        postInit();
+    }
+
+    // =========================================================================
+    // INIT COMPONENTS (NetBeans style — semua inisialisasi komponen UI di sini)
+    // =========================================================================
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        // ---------- Root (CardLayout) ----------
+        viewLayout  = new CardLayout();
+        rootPanel   = new javax.swing.JPanel(viewLayout);
+
+        // ---------- Menu Panel ----------
+        menuNameField      = new javax.swing.JTextField();
+        menuEasyRadio      = new javax.swing.JRadioButton(SudokuDifficulty.EASY.getLabel());
+        menuMediumRadio    = new javax.swing.JRadioButton(SudokuDifficulty.MEDIUM.getLabel());
+        menuHighRadio      = new javax.swing.JRadioButton(SudokuDifficulty.HIGH.getLabel());
+        menuDifficultyGroup = new ButtonGroup();
+        menuStartButton    = new javax.swing.JButton("Mulai Bermain");
+        menuExitButton     = new javax.swing.JButton("Keluar");
+        menuPanel          = buildMenuPanel();
+
+        // ---------- Game Panel: Header ----------
+        headerPanel        = buildHeaderGradientPanel();
+        titleLabel         = new javax.swing.JLabel("Sudoku Classic");
+        statusLabel        = new javax.swing.JLabel("Isi semua kotak sesuai aturan Sudoku.");
+        difficultyLabel    = new javax.swing.JLabel();
+        playerLabel        = new javax.swing.JLabel();
+        timerLabel         = new javax.swing.JLabel("Waktu: 00:00");
+        attemptsLabel      = new javax.swing.JLabel("Kesempatan: 3/3");
+
+        // ---------- Game Panel: Grid area ----------
+        gridPanel          = new javax.swing.JPanel(new BorderLayout());
+
+        // ---------- Game Panel: Footer buttons ----------
+        undoButton         = new javax.swing.JButton("Undo");
+        redoButton         = new javax.swing.JButton("Redo");
+        hintButton         = new javax.swing.JButton("Hint");
+        checkButton        = new javax.swing.JButton("Cek");
+        saveButton         = new javax.swing.JButton("Simpan");
+        loadButton         = new javax.swing.JButton("Muat");
+        menuButton         = new javax.swing.JButton("Menu");
+        resetButton        = new javax.swing.JButton("Reset");
+
+        // ---------- Assemble ----------
+        setupFrame();
+        setupHeader();
+        setupFooter();
+        setupGamePanel();
+        assembleRoot();
+
+    }// </editor-fold>//GEN-END:initComponents
+
+    // =========================================================================
+    // POST-INIT (dipanggil setelah initComponents)
+    // =========================================================================
+    private void postInit() {
+        // Pasang listener menu
+        menuStartButton.addActionListener(evt -> menuStartButtonActionPerformed(evt));
+        menuExitButton.addActionListener(evt  -> menuExitButtonActionPerformed(evt));
+
+        // Pasang listener footer
+        undoButton.addActionListener(evt  -> undoButtonActionPerformed(evt));
+        redoButton.addActionListener(evt  -> redoButtonActionPerformed(evt));
+        hintButton.addActionListener(evt  -> hintButtonActionPerformed(evt));
+        checkButton.addActionListener(evt -> checkButtonActionPerformed(evt));
+        saveButton.addActionListener(evt  -> saveButtonActionPerformed(evt));
+        loadButton.addActionListener(evt  -> loadButtonActionPerformed(evt));
+        menuButton.addActionListener(evt  -> menuButtonActionPerformed(evt));
+        resetButton.addActionListener(evt -> resetButtonActionPerformed(evt));
+
+        // ESC keluar full-screen
+        installEscapeShortcut();
+
+        viewLayout.show(rootPanel, "menu");
+    }
+
+    // =========================================================================
+    // SETUP HELPERS (dipanggil dari initComponents)
+    // =========================================================================
+    private void setupFrame() {
         setTitle("Sudoku Classic");
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-
-        // ── FULL SCREEN: setUndecorated HARUS dipanggil sebelum window ditampilkan.
-        //    Memanggilnya setelah setVisible(true) menyebabkan error native.
-        //    Kita tidak pakai device.setFullScreenWindow() (exclusive mode) karena
-        //    itu yang menyebabkan "layar berpindah" / GPU takeover.
-        //    Sebagai gantinya: hilangkan dekorasi, lalu penuhi seluruh layar secara manual.
         setUndecorated(true);
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         setSize(screen);
         setLocation(0, 0);
         setResizable(false);
-
         addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowClosing(java.awt.event.WindowEvent e) {
-                if ("menu".equals(currentView)) {
-                    shutdownApplication();
-                }
-            }
-        });
-
-        viewLayout = new CardLayout();
-        rootPanel  = new JPanel(viewLayout);
-        menuPanel  = new SudokuMenuPanel();
-        menuPanel.setStartAction(event -> startFromMenu());
-        menuPanel.setExitAction(event -> shutdownApplication());
-        gamePanel  = buildGamePanel();
-
-        rootPanel.add(menuPanel, "menu");
-        rootPanel.add(gamePanel, "game");
-        setContentPane(rootPanel);
-
-        viewLayout.show(rootPanel, "menu");
-
-        // Pasang ESC untuk keluar full screen → kembali ke window biasa (opsional)
-        installEscapeShortcut();
-    }
-
-    /**
-     * ESC → keluar dari full-screen (hapus dekorasi & kembalikan ukuran normal).
-     * Dipanggil hanya sekali dari konstruktor.
-     */
-    private void installEscapeShortcut() {
-        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-            .put(KeyStroke.getKeyStroke("ESCAPE"), "toggleFullscreen");
-        getRootPane().getActionMap().put("toggleFullscreen", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                exitFullScreen();
+            @Override public void windowClosing(java.awt.event.WindowEvent e) {
+                if ("menu".equals(currentView)) shutdownApplication();
             }
         });
     }
 
-    /** Keluar dari full-screen tanpa crash: sembunyikan dulu, ubah dekorasi, tampilkan lagi. */
-    private void exitFullScreen() {
-        if (!isUndecorated()) return;   // sudah bukan full-screen
-        // Harus hide dulu sebelum mengubah undecorated pada window yang sudah tampil
-        setVisible(false);
-        dispose();                      // lepas native peer lama
-        setUndecorated(false);
-        setResizable(true);
-        setMinimumSize(new Dimension(960, 720));
-        setExtendedState(JFrame.MAXIMIZED_BOTH);
-        setVisible(true);
-    }
+    private void setupHeader() {
+        titleLabel.setFont(new Font("Georgia", Font.BOLD, 30));
+        titleLabel.setForeground(TEXT_ON_DARK);
 
-    private JPanel buildGamePanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(BACKGROUND);
-        JPanel header = buildHeader();
-        gridPanel = new JPanel(new BorderLayout());
-        gridPanel.setBorder(BorderFactory.createEmptyBorder(16, 16, 12, 16));
-        gridPanel.setBackground(BACKGROUND);
-        JPanel footer = buildFooter();
-
-        panel.add(header,   BorderLayout.NORTH);
-        panel.add(gridPanel, BorderLayout.CENTER);
-        panel.add(footer,   BorderLayout.SOUTH);
-        return panel;
-    }
-
-    private JPanel buildHeader() {
-        SudokuGradientPanel header = new SudokuGradientPanel(HEADER_START, HEADER_END);
-        header.setLayout(new BorderLayout());
-        header.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
-
-        JLabel title = new JLabel("Sudoku Classic");
-        title.setFont(new Font("Georgia", Font.BOLD, 30));
-        title.setForeground(TEXT_ON_DARK);
-
-        difficultyLabel = new JLabel();
-        difficultyLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        difficultyLabel.setForeground(new Color(244, 238, 212));
-
-        statusLabel = new JLabel("Isi semua kotak sesuai aturan Sudoku.");
         statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         statusLabel.setForeground(new Color(246, 240, 221));
 
-        playerLabel = new JLabel();
+        difficultyLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        difficultyLabel.setForeground(new Color(244, 238, 212));
+
         playerLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         playerLabel.setForeground(new Color(255, 248, 235));
 
-        timerLabel = new JLabel("Waktu: 00:00");
         timerLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         timerLabel.setForeground(new Color(246, 240, 221));
 
-        attemptsLabel = new JLabel("Kesempatan: 3/3");
         attemptsLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         attemptsLabel.setForeground(new Color(246, 240, 221));
 
-        JPanel textPanel = new JPanel(new BorderLayout());
+        javax.swing.JPanel textPanel = new javax.swing.JPanel(new BorderLayout());
         textPanel.setOpaque(false);
-        textPanel.add(title,       BorderLayout.NORTH);
+        textPanel.add(titleLabel,  BorderLayout.NORTH);
         textPanel.add(statusLabel, BorderLayout.SOUTH);
 
-        JPanel infoPanel = new JPanel();
+        javax.swing.JPanel infoPanel = new javax.swing.JPanel();
         infoPanel.setOpaque(false);
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         playerLabel.setAlignmentX(Component.RIGHT_ALIGNMENT);
@@ -267,87 +236,299 @@ class SudokuGameFrame extends JFrame {
         infoPanel.add(timerLabel);
         infoPanel.add(attemptsLabel);
 
-        header.add(textPanel, BorderLayout.WEST);
-        header.add(infoPanel, BorderLayout.EAST);
-        return header;
+        headerPanel.setLayout(new BorderLayout());
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
+        headerPanel.add(textPanel, BorderLayout.WEST);
+        headerPanel.add(infoPanel, BorderLayout.EAST);
     }
 
-    private JPanel buildFooter() {
-        JPanel footer = new JPanel(new GridLayout(2, 4, 10, 10));
-        footer.setBorder(BorderFactory.createEmptyBorder(8, 16, 16, 16));
-        footer.setBackground(BACKGROUND);
+    private void setupFooter() {
+        styleFooterButton(undoButton,  new Color(237, 231, 214), new Color(74, 66, 56));
+        styleFooterButton(redoButton,  new Color(237, 231, 214), new Color(74, 66, 56));
+        styleFooterButton(hintButton,  ACCENT, Color.WHITE);
+        styleFooterButton(checkButton, new Color(214, 176, 114), new Color(58, 48, 38));
+        styleFooterButton(saveButton,  new Color(235, 229, 213), new Color(74, 66, 56));
+        styleFooterButton(loadButton,  new Color(235, 229, 213), new Color(74, 66, 56));
+        styleFooterButton(menuButton,  WOOD, Color.WHITE);
+        styleFooterButton(resetButton, new Color(235, 229, 213), new Color(74, 66, 56));
 
-        JButton undoButton  = createButton("Undo",  new Color(237, 231, 214), new Color(74, 66, 56));
-        undoButton.addActionListener(event -> undoMove());
-
-        JButton redoButton  = createButton("Redo",  new Color(237, 231, 214), new Color(74, 66, 56));
-        redoButton.addActionListener(event -> redoMove());
-
-        JButton hintButton  = createButton("Hint",  ACCENT, Color.WHITE);
-        hintButton.addActionListener(event -> hintMove());
-
-        JButton checkButton = createButton("Cek",   new Color(214, 176, 114), new Color(58, 48, 38));
-        checkButton.addActionListener(event -> checkPuzzle());
-
-        JButton saveButton  = createButton("Simpan", new Color(235, 229, 213), new Color(74, 66, 56));
-        saveButton.addActionListener(event -> saveGame());
-
-        JButton loadButton  = createButton("Muat",  new Color(235, 229, 213), new Color(74, 66, 56));
-        loadButton.addActionListener(event -> loadGame());
-
-        JButton menuButton  = createButton("Menu",  WOOD, Color.WHITE);
-        menuButton.addActionListener(event -> showMenu());
-
-        JButton resetButton = createButton("Reset", new Color(235, 229, 213), new Color(74, 66, 56));
-        resetButton.addActionListener(event -> resetPuzzle());
-
-        footer.add(undoButton);
-        footer.add(redoButton);
-        footer.add(hintButton);
-        footer.add(checkButton);
-        footer.add(saveButton);
-        footer.add(loadButton);
-        footer.add(menuButton);
-        footer.add(resetButton);
-        return footer;
+        footerPanel = new javax.swing.JPanel(new GridLayout(2, 4, 10, 10));
+        footerPanel.setBorder(BorderFactory.createEmptyBorder(8, 16, 16, 16));
+        footerPanel.setBackground(BACKGROUND);
+        footerPanel.add(undoButton);
+        footerPanel.add(redoButton);
+        footerPanel.add(hintButton);
+        footerPanel.add(checkButton);
+        footerPanel.add(saveButton);
+        footerPanel.add(loadButton);
+        footerPanel.add(menuButton);
+        footerPanel.add(resetButton);
     }
 
-    private JButton createButton(String text, Color bg, Color fg) {
-        JButton button = new JButton(text);
-        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        button.setBackground(bg);
-        button.setForeground(fg);
-        button.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(166, 144, 112)),
-            BorderFactory.createEmptyBorder(8, 12, 8, 12)
-        ));
-        button.setFocusPainted(false);
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return button;
+    private void setupGamePanel() {
+        gridPanel.setBorder(BorderFactory.createEmptyBorder(16, 16, 12, 16));
+        gridPanel.setBackground(BACKGROUND);
+
+        gamePanel = new javax.swing.JPanel(new BorderLayout());
+        gamePanel.setBackground(BACKGROUND);
+        gamePanel.add(headerPanel, BorderLayout.NORTH);
+        gamePanel.add(gridPanel,   BorderLayout.CENTER);
+        gamePanel.add(footerPanel, BorderLayout.SOUTH);
     }
 
-    private void startFromMenu() {
-        String inputName = menuPanel.getPlayerName();
-        this.playerName  = inputName.isEmpty() ? "Pemain" : inputName;
-        SudokuDifficulty selected = menuPanel.getSelectedDifficulty();
+    private void assembleRoot() {
+        rootPanel.add(menuPanel, "menu");
+        rootPanel.add(gamePanel, "game");
+        setContentPane(rootPanel);
+    }
+
+    private javax.swing.JPanel buildMenuPanel() {
+        SudokuGradientPanel panel = new SudokuGradientPanel(
+                new Color(82, 90, 56), new Color(145, 132, 80));
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+
+        JLabel title = new JLabel("Sudoku Classic");
+        title.setFont(new Font("Georgia", Font.BOLD, 42));
+        title.setForeground(new Color(252, 245, 233));
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel subtitle = new JLabel("Tantang logikamu dan kejar waktu terbaik.");
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        subtitle.setForeground(new Color(230, 219, 201));
+        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        // Card
+        javax.swing.JPanel card = new javax.swing.JPanel();
+        card.setBackground(new Color(255, 249, 240, 235));
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(204, 181, 153)),
+            BorderFactory.createEmptyBorder(24, 28, 24, 28)));
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setMaximumSize(new Dimension(520, 360));
+        card.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel nameLabel = new JLabel("Nama Pemain");
+        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        menuNameField.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        menuNameField.setMaximumSize(new Dimension(480, 38));
+        menuNameField.setAlignmentX(Component.CENTER_ALIGNMENT);
+        menuNameField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(200, 187, 170)),
+            BorderFactory.createEmptyBorder(6, 10, 6, 10)));
+
+        JLabel diffLabel = new JLabel("Pilih Kesulitan");
+        diffLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        diffLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        menuDifficultyGroup.add(menuEasyRadio);
+        menuDifficultyGroup.add(menuMediumRadio);
+        menuDifficultyGroup.add(menuHighRadio);
+        menuEasyRadio.setSelected(true);
+
+        styleRadioButton(menuEasyRadio);
+        styleRadioButton(menuMediumRadio);
+        styleRadioButton(menuHighRadio);
+
+        javax.swing.JPanel diffPanel = new javax.swing.JPanel(new GridLayout(1, 3, 12, 12));
+        diffPanel.setOpaque(false);
+        diffPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        diffPanel.add(menuEasyRadio);
+        diffPanel.add(menuMediumRadio);
+        diffPanel.add(menuHighRadio);
+
+        menuStartButton.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        menuStartButton.setForeground(Color.WHITE);
+        menuStartButton.setBackground(new Color(84, 120, 77));
+        menuStartButton.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        menuStartButton.setFocusPainted(false);
+        menuStartButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        menuStartButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        menuExitButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        menuExitButton.setForeground(new Color(70, 62, 52));
+        menuExitButton.setBackground(new Color(232, 224, 208));
+        menuExitButton.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+        menuExitButton.setFocusPainted(false);
+        menuExitButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        menuExitButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        card.add(nameLabel);         card.add(Box.createVerticalStrut(8));
+        card.add(menuNameField);     card.add(Box.createVerticalStrut(18));
+        card.add(diffLabel);         card.add(Box.createVerticalStrut(10));
+        card.add(diffPanel);         card.add(Box.createVerticalStrut(22));
+        card.add(menuStartButton);   card.add(Box.createVerticalStrut(10));
+        card.add(menuExitButton);
+
+        panel.add(Box.createVerticalGlue());
+        panel.add(title);    panel.add(Box.createVerticalStrut(6));
+        panel.add(subtitle); panel.add(Box.createVerticalStrut(26));
+        panel.add(card);
+        panel.add(Box.createVerticalGlue());
+        return panel;
+    }
+
+    private SudokuGradientPanel buildHeaderGradientPanel() {
+        return new SudokuGradientPanel(HEADER_START, HEADER_END);
+    }
+
+    // =========================================================================
+    // ACTION PERFORMED METHODS (NetBeans style — satu method per komponen)
+    // =========================================================================
+
+    private void menuStartButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuStartButtonActionPerformed
+        String inputName = menuNameField.getText().trim();
+        playerName = inputName.isEmpty() ? "Pemain" : inputName;
+        SudokuDifficulty selected = getSelectedDifficulty();
         startNewGame(selected);
-        currentView = "game";                       // FIX 3
+        currentView = "game";
         viewLayout.show(rootPanel, "game");
-    }
+    }//GEN-LAST:event_menuStartButtonActionPerformed
 
-    private void showMenu() {
+    private void menuExitButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuExitButtonActionPerformed
+        shutdownApplication();
+    }//GEN-LAST:event_menuExitButtonActionPerformed
+
+    private void undoButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_undoButtonActionPerformed
+        SudokuGameState prev = history.undo(state);
+        if (prev == null) { statusLabel.setText("Tidak ada undo."); return; }
+        applyState(prev, false, "Undo diterapkan.");
+    }//GEN-LAST:event_undoButtonActionPerformed
+
+    private void redoButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_redoButtonActionPerformed
+        SudokuGameState next = history.redo(state);
+        if (next == null) { statusLabel.setText("Tidak ada redo."); return; }
+        applyState(next, false, "Redo diterapkan.");
+    }//GEN-LAST:event_redoButtonActionPerformed
+
+    private void hintButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hintButtonActionPerformed
+        if (state == null) return;
+        int row = -1, col = -1;
+        if (selectedCell != null && !selectedCell.isGiven()) {
+            row = selectedCell.getRow();
+            col = selectedCell.getCol();
+            if (state.board[row][col] != 0) { row = -1; col = -1; }
+        }
+        if (row == -1) {
+            outer:
+            for (int r = 0; r < state.size; r++)
+                for (int c = 0; c < state.size; c++)
+                    if (!state.fixed[r][c] && state.board[r][c] == 0) { row = r; col = c; break outer; }
+        }
+        if (row == -1) { statusLabel.setText("Tidak ada sel kosong untuk hint."); return; }
+
+        SudokuGameCell cell = cells[row][col];
+        int value = state.solution[row][col];
+        history.push(state);
+        state.board[row][col] = value;
+        cell.setText(board.valueToSymbol(value));
+        cell.setError(false);
+        cell.animateSuccess();
+        soundPlayer.play(SoundEffect.HINT);
+        selectCell(cell);
+        statusLabel.setText("Hint diberikan.");
+        if (SudokuValidator.isSolved(state.board, state.solution)) handleWin();
+    }//GEN-LAST:event_hintButtonActionPerformed
+
+    private void checkButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkButtonActionPerformed
+        int size = board.getSize();
+        boolean anyEmpty = false, anyError = false;
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                SudokuGameCell cell = cells[row][col];
+                if (cell.isGiven()) { cell.setError(false); continue; }
+                int value = state.board[row][col];
+                if (value == 0)  { anyEmpty = true; cell.setError(false); continue; }
+                if (value != state.solution[row][col]) { anyError = true; cell.setError(true); }
+                else cell.setError(false);
+            }
+        }
+        if (!anyEmpty && !anyError) {
+            handleWin();
+        } else if (anyError) {
+            statusLabel.setText("Masih ada jawaban yang salah.");
+            JOptionPane.showMessageDialog(this, "Ada jawaban yang salah.", "Periksa", JOptionPane.WARNING_MESSAGE);
+        } else {
+            statusLabel.setText("Masih ada kotak kosong.");
+            JOptionPane.showMessageDialog(this, "Masih ada kotak kosong.", "Periksa", JOptionPane.WARNING_MESSAGE);
+        }
+        updateHighlights();
+    }//GEN-LAST:event_checkButtonActionPerformed
+
+    private void saveButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveButtonActionPerformed
+        if (state == null) return;
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Simpan permainan");
+        chooser.setFileFilter(new FileNameExtensionFilter("Sudoku Save (*.sdk)", "sdk"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+        File file = chooser.getSelectedFile();
+        if (!file.getName().toLowerCase(Locale.US).endsWith(".sdk"))
+            file = new File(file.getParentFile(), file.getName() + ".sdk");
+        SudokuGameState snapshot = state.copy();
+        snapshot.playerName        = playerName;
+        snapshot.elapsedSeconds    = elapsedSeconds;
+        snapshot.attemptsRemaining = attemptsRemaining;
+        try (ObjectOutputStream out = new ObjectOutputStream(
+                new BufferedOutputStream(new FileOutputStream(file)))) {
+            out.writeObject(snapshot);
+            statusLabel.setText("Permainan disimpan.");
+        } catch (IOException ex) {
+            showError("Gagal menyimpan permainan.");
+        }
+    }//GEN-LAST:event_saveButtonActionPerformed
+
+    private void loadButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadButtonActionPerformed
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Muat permainan");
+        chooser.setFileFilter(new FileNameExtensionFilter("Sudoku Save (*.sdk)", "sdk"));
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
+        File file = chooser.getSelectedFile();
+        try (ObjectInputStream in = new ObjectInputStream(
+                new BufferedInputStream(new FileInputStream(file)))) {
+            Object obj = in.readObject();
+            if (!(obj instanceof SudokuGameState)) { showError("File tidak valid."); return; }
+            SudokuGameState loaded = ((SudokuGameState) obj).copy();
+            initialState = loaded.copy();
+            applyState(loaded, true, "Permainan dimuat.");
+        } catch (IOException | ClassNotFoundException ex) {
+            showError("Gagal memuat permainan.");
+        }
+    }//GEN-LAST:event_loadButtonActionPerformed
+
+    private void menuButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuButtonActionPerformed
         stopTimer();
         gamePanel.setEnabled(true);
-        currentView = "menu";                       // FIX 3
+        currentView = "menu";
         viewLayout.show(rootPanel, "menu");
-    }
+    }//GEN-LAST:event_menuButtonActionPerformed
 
-    private void shutdownApplication() {
-        stopTimer();
-        dispose();
-        System.exit(0);
-    }
+    private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetButtonActionPerformed
+        if (initialState == null) return;
+        applyState(initialState.copy(), true, "Puzzle direset ke awal.");
+    }//GEN-LAST:event_resetButtonActionPerformed
 
+    // Dipanggil saat sel grid diklik
+    private void gridCellMousePressed(SudokuGameCell cell) {//GEN-FIRST:event_gridCellMousePressed
+        if (boardLocked) return;
+        selectCell(cell);
+        if (cell.isGiven()) return;
+        if (selectedSymbol == null) return;
+        if (selectedSymbol.isEmpty()) { applyMove(cell, 0); return; }
+        int value = board.symbolToValue(selectedSymbol);
+        applyMove(cell, value);
+    }//GEN-LAST:event_gridCellMousePressed
+
+    // Dipanggil saat tombol simbol (angka) diklik
+    private void symbolButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_symbolButtonActionPerformed
+        JButton source = (JButton) evt.getSource();
+        String symbol = (String) source.getClientProperty("symbol");
+        setSelectedSymbol(symbol);
+    }//GEN-LAST:event_symbolButtonActionPerformed
+
+    // =========================================================================
+    // GAME LOGIC METHODS
+    // =========================================================================
     private void startNewGame(SudokuDifficulty difficulty) {
         board        = new SudokuGameBoard(difficulty);
         state        = board.createState(playerName, difficulty);
@@ -364,8 +545,8 @@ class SudokuGameFrame extends JFrame {
         playerName = (state.playerName == null || state.playerName.isEmpty()) ? "Pemain" : state.playerName;
         elapsedSeconds    = state.elapsedSeconds;
         attemptsRemaining = state.attemptsRemaining;
-        selectedCell      = null;
-        boardLocked       = false;
+        selectedCell  = null;
+        boardLocked   = false;
         if (resetHistory) history.clear();
 
         difficultyLabel.setText("Mode: " + state.difficulty.getLabel());
@@ -385,8 +566,7 @@ class SudokuGameFrame extends JFrame {
         grid.setBackground(GRID_LINE);
         grid.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(GRID_LINE, 4),
-            BorderFactory.createEmptyBorder(6, 6, 6, 6)
-        ));
+            BorderFactory.createEmptyBorder(6, 6, 6, 6)));
 
         cells = new SudokuGameCell[size][size];
         int[][]     values = state.board;
@@ -397,15 +577,14 @@ class SudokuGameFrame extends JFrame {
 
         for (int row = 0; row < size; row++) {
             for (int col = 0; col < size; col++) {
-                int    value = values[row][col];
+                int     value = values[row][col];
                 boolean given = fixed[row][col];
                 String  text  = board.valueToSymbol(value);
                 SudokuGameCell cell = new SudokuGameCell(row, col, base, given, text,
                         cellFont, cellSize, GRID_LINE);
                 cell.addMouseListener(new MouseAdapter() {
-                    @Override
-                    public void mousePressed(MouseEvent event) {
-                        handleCellSelection(cell);
+                    @Override public void mousePressed(MouseEvent e) {
+                        gridCellMousePressed(cell);
                     }
                 });
                 cells[row][col] = cell;
@@ -415,20 +594,11 @@ class SudokuGameFrame extends JFrame {
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(BACKGROUND);
-        wrapper.add(grid,                    BorderLayout.CENTER);
-        wrapper.add(buildBottomPanel(symbols), BorderLayout.SOUTH);
+        wrapper.add(grid,                     BorderLayout.CENTER);
+        wrapper.add(buildNumberPad(symbols),  BorderLayout.SOUTH);
         gridPanel.add(wrapper, BorderLayout.CENTER);
         gridPanel.revalidate();
         gridPanel.repaint();
-    }
-
-    private JPanel buildBottomPanel(char[] symbols) {
-        JPanel bottom = new JPanel();
-        bottom.setOpaque(false);
-        bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
-        bottom.add(Box.createVerticalStrut(6));
-        bottom.add(buildNumberPad(symbols));
-        return bottom;
     }
 
     private JPanel buildNumberPad(char[] symbols) {
@@ -442,77 +612,27 @@ class SudokuGameFrame extends JFrame {
         label.setForeground(TEXT_SUBTLE);
         label.setHorizontalAlignment(SwingConstants.CENTER);
 
-        int size    = symbols.length;
-        int columns = size <= 9 ? size + 1 : 8;
+        int columns = symbols.length <= 9 ? symbols.length + 1 : 8;
         JPanel grid = new JPanel(new GridLayout(0, columns, 8, 8));
         grid.setOpaque(false);
 
         for (char symbol : symbols) {
-            JButton button = createChoiceButton(String.valueOf(symbol));
-            registerSymbolButton(button, String.valueOf(symbol));
-            grid.add(button);
+            JButton btn = createChoiceButton(String.valueOf(symbol));
+            registerSymbolButton(btn, String.valueOf(symbol));
+            grid.add(btn);
         }
 
-        JButton clearButton = createChoiceButton("Hapus");
-        clearButton.setBackground(new Color(232, 224, 208));
-        clearButton.setForeground(new Color(70, 62, 52));
-        registerSymbolButton(clearButton, "");
-        grid.add(clearButton);
+        JButton clearBtn = createChoiceButton("Hapus");
+        clearBtn.setBackground(new Color(232, 224, 208));
+        clearBtn.setForeground(new Color(70, 62, 52));
+        registerSymbolButton(clearBtn, "");
+        grid.add(clearBtn);
 
         pad.add(label, BorderLayout.NORTH);
         pad.add(grid,  BorderLayout.CENTER);
 
-        if (symbols.length > 0) {
-            setSelectedSymbol(String.valueOf(symbols[0]));
-        }
+        if (symbols.length > 0) setSelectedSymbol(String.valueOf(symbols[0]));
         return pad;
-    }
-
-    private JButton createChoiceButton(String text) {
-        JButton button = new JButton(text);
-        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        button.setBackground(new Color(248, 244, 235));
-        button.setForeground(new Color(70, 62, 52));
-        button.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(198, 177, 151)),
-            BorderFactory.createEmptyBorder(6, 10, 6, 10)
-        ));
-        button.setFocusPainted(false);
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return button;
-    }
-
-    private void registerSymbolButton(JButton button, String symbol) {
-        button.putClientProperty("symbol", symbol);
-        button.putClientProperty("baseBg", button.getBackground());
-        button.putClientProperty("baseFg", button.getForeground());
-        button.addActionListener(event -> setSelectedSymbol(symbol));
-        symbolButtons.add(button);
-    }
-
-    private void setSelectedSymbol(String symbol) {
-        selectedSymbol = symbol;
-        for (JButton button : symbolButtons) {
-            String value    = (String) button.getClientProperty("symbol");
-            boolean isSel   = symbol.equals(value);
-            Color baseBg    = (Color) button.getClientProperty("baseBg");
-            Color baseFg    = (Color) button.getClientProperty("baseFg");
-            button.setBackground(isSel ? ACCENT          : baseBg);
-            button.setForeground(isSel ? Color.WHITE     : baseFg);
-        }
-    }
-
-    private void handleCellSelection(SudokuGameCell cell) {
-        if (boardLocked) return;
-        selectCell(cell);
-        if (cell.isGiven()) return;
-        if (selectedSymbol == null) return;
-        if (selectedSymbol.isEmpty()) {
-            applyMove(cell, 0);
-            return;
-        }
-        int value = board.symbolToValue(selectedSymbol);
-        applyMove(cell, value);
     }
 
     private void applyMove(SudokuGameCell cell, int value) {
@@ -537,18 +657,14 @@ class SudokuGameFrame extends JFrame {
         state.board[row][col] = value;
         cell.setText(board.valueToSymbol(value));
         cell.setError(false);
-        if (value != 0) {
-            cell.animateSuccess();
-            soundPlayer.play(SoundEffect.CORRECT);
-        }
+        if (value != 0) { cell.animateSuccess(); soundPlayer.play(SoundEffect.CORRECT); }
         updateHighlights();
-
         if (SudokuValidator.isSolved(state.board, state.solution)) handleWin();
     }
 
     private void flashInvalid(SudokuGameCell cell) {
         cell.setError(true);
-        Timer flash = new Timer(450, event -> cell.setError(false));
+        Timer flash = new Timer(450, e -> cell.setError(false));
         flash.setRepeats(false);
         flash.start();
     }
@@ -561,23 +677,17 @@ class SudokuGameFrame extends JFrame {
 
     private void updateHighlights() {
         if (cells == null || state == null) return;
-        int size = state.size;
-        int base = state.base;
+        int size = state.size, base = state.base;
         int row  = selectedCell == null ? -1 : selectedCell.getRow();
         int col  = selectedCell == null ? -1 : selectedCell.getCol();
-        String selectedValue = selectedCell == null ? "" : selectedCell.getText();
+        String selVal = selectedCell == null ? "" : selectedCell.getText();
         for (int r = 0; r < size; r++) {
             for (int c = 0; c < size; c++) {
                 SudokuGameCell cell = cells[r][c];
-                boolean selected    = r == row && c == col;
-                boolean peer        = false;
-                if (row >= 0 && col >= 0) {
-                    boolean sameRow = r == row;
-                    boolean sameCol = c == col;
-                    boolean sameBox = (r / base) == (row / base) && (c / base) == (col / base);
-                    peer = sameRow || sameCol || sameBox;
-                }
-                boolean sameSymbol = !selectedValue.isEmpty() && selectedValue.equals(cell.getText());
+                boolean selected   = r == row && c == col;
+                boolean peer       = row >= 0 && (r == row || c == col
+                        || (r/base == row/base && c/base == col/base));
+                boolean sameSymbol = !selVal.isEmpty() && selVal.equals(cell.getText());
                 cell.setSelected(selected);
                 cell.setPeerHighlight(peer);
                 cell.setSameSymbol(sameSymbol);
@@ -585,132 +695,10 @@ class SudokuGameFrame extends JFrame {
         }
     }
 
-    private void checkPuzzle() {
-        int size       = board.getSize();
-        boolean anyEmpty = false;
-        boolean anyError = false;
-
-        for (int row = 0; row < size; row++) {
-            for (int col = 0; col < size; col++) {
-                SudokuGameCell cell = cells[row][col];
-                if (cell.isGiven()) { cell.setError(false); continue; }
-                int value = state.board[row][col];
-                if (value == 0)  { anyEmpty = true; cell.setError(false); continue; }
-                if (value != state.solution[row][col]) { anyError = true; cell.setError(true); }
-                else cell.setError(false);
-            }
-        }
-
-        if (!anyEmpty && !anyError) {
-            handleWin();
-        } else if (anyError) {
-            statusLabel.setText("Masih ada jawaban yang salah.");
-            JOptionPane.showMessageDialog(this, "Ada jawaban yang salah.", "Periksa", JOptionPane.WARNING_MESSAGE);
-        } else {
-            statusLabel.setText("Masih ada kotak kosong.");
-            JOptionPane.showMessageDialog(this, "Masih ada kotak kosong.", "Periksa", JOptionPane.WARNING_MESSAGE);
-        }
-        updateHighlights();
-    }
-
-    private void resetPuzzle() {
-        if (initialState == null) return;
-        applyState(initialState.copy(), true, "Puzzle direset ke awal.");
-    }
-
-    private void hintMove() {
-        if (state == null) return;
-        int row = -1, col = -1;
-        if (selectedCell != null && !selectedCell.isGiven()) {
-            row = selectedCell.getRow();
-            col = selectedCell.getCol();
-            if (state.board[row][col] != 0) { row = -1; col = -1; }
-        }
-        if (row == -1) {
-            outer:
-            for (int r = 0; r < state.size; r++) {
-                for (int c = 0; c < state.size; c++) {
-                    if (!state.fixed[r][c] && state.board[r][c] == 0) {
-                        row = r; col = c; break outer;
-                    }
-                }
-            }
-        }
-        if (row == -1) { statusLabel.setText("Tidak ada sel kosong untuk hint."); return; }
-
-        SudokuGameCell cell = cells[row][col];
-        int value = state.solution[row][col];
-        history.push(state);
-        state.board[row][col] = value;
-        cell.setText(board.valueToSymbol(value));
-        cell.setError(false);
-        cell.animateSuccess();
-        soundPlayer.play(SoundEffect.HINT);
-        selectCell(cell);
-        statusLabel.setText("Hint diberikan.");
-        if (SudokuValidator.isSolved(state.board, state.solution)) handleWin();
-    }
-
-    private void undoMove() {
-        SudokuGameState prev = history.undo(state);
-        if (prev == null) { statusLabel.setText("Tidak ada undo."); return; }
-        applyState(prev, false, "Undo diterapkan.");
-    }
-
-    private void redoMove() {
-        SudokuGameState next = history.redo(state);
-        if (next == null) { statusLabel.setText("Tidak ada redo."); return; }
-        applyState(next, false, "Redo diterapkan.");
-    }
-
-    private void saveGame() {
-        if (state == null) return;
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Simpan permainan");
-        chooser.setFileFilter(new FileNameExtensionFilter("Sudoku Save (*.sdk)", "sdk"));
-        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
-
-        File file = chooser.getSelectedFile();
-        if (!file.getName().toLowerCase(Locale.US).endsWith(".sdk"))
-            file = new File(file.getParentFile(), file.getName() + ".sdk");
-
-        SudokuGameState snapshot = state.copy();
-        snapshot.playerName       = playerName;
-        snapshot.elapsedSeconds   = elapsedSeconds;
-        snapshot.attemptsRemaining = attemptsRemaining;
-
-        try (ObjectOutputStream out = new ObjectOutputStream(
-                new BufferedOutputStream(new FileOutputStream(file)))) {
-            out.writeObject(snapshot);
-            statusLabel.setText("Permainan disimpan.");
-        } catch (IOException ex) {
-            showError("Gagal menyimpan permainan.");
-        }
-    }
-
-    private void loadGame() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Muat permainan");
-        chooser.setFileFilter(new FileNameExtensionFilter("Sudoku Save (*.sdk)", "sdk"));
-        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
-
-        File file = chooser.getSelectedFile();
-        try (ObjectInputStream in = new ObjectInputStream(
-                new BufferedInputStream(new FileInputStream(file)))) {
-            Object obj = in.readObject();
-            if (!(obj instanceof SudokuGameState)) { showError("File tidak valid."); return; }
-            SudokuGameState loaded = ((SudokuGameState) obj).copy();
-            initialState = loaded.copy();
-            applyState(loaded, true, "Permainan dimuat.");
-        } catch (IOException | ClassNotFoundException ex) {
-            showError("Gagal memuat permainan.");
-        }
-    }
-
     private void handleWin() {
         stopTimer();
         lockBoard();
-        recordLeaderboardEntry();
+        leaderboard.addEntry(new SudokuLeaderboardEntry(playerName, elapsedSeconds, state.difficulty));
         soundPlayer.play(SoundEffect.WIN);
         statusLabel.setText("Selamat! Semua jawaban benar.");
         showWinOverlay();
@@ -724,10 +712,195 @@ class SudokuGameFrame extends JFrame {
         showLoseOverlay();
     }
 
-    private void recordLeaderboardEntry() {
-        if (state == null) return;
-        String name = (playerName == null || playerName.isEmpty()) ? "Pemain" : playerName;
-        leaderboard.addEntry(new SudokuLeaderboardEntry(name, elapsedSeconds, state.difficulty));
+    private void showWinOverlay() {
+        String winner   = playerName == null || playerName.isEmpty() ? "Pemain" : playerName;
+        String duration = formatDuration(elapsedSeconds);
+
+        JDialog dialog = new JDialog(this, "Selesai", true);
+        dialog.setUndecorated(true);
+        dialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        dialog.setSize(getSize());
+        dialog.setLocationRelativeTo(this);
+        gamePanel.setEnabled(false);
+
+        SudokuGradientPanel overlay = new SudokuGradientPanel(
+                new Color(77, 90, 56), new Color(164, 170, 108));
+        overlay.setLayout(new BoxLayout(overlay, BoxLayout.Y_AXIS));
+        overlay.setBorder(BorderFactory.createEmptyBorder(100, 50, 100, 50));
+
+        JLabel lbTitle  = createOverlayLabel("🎉 SELAMAT 🎉",     52, TEXT_ON_DARK);
+        JLabel lbName   = createOverlayLabel("Pemain: " + winner, 32, new Color(255, 215, 0));
+        JLabel lbSub    = createOverlayLabel("Anda Berhasil Menyelesaikan SUDOKU", 22, new Color(248, 243, 223));
+        JLabel lbTime   = createOverlayLabel("⏱️ Waktu: " + duration, 20, new Color(200, 255, 200));
+
+        JPanel lbPanel = buildLeaderboardPanel();
+
+        JButton btnPlayAgain = createFooterButton("Main Lagi", ACCENT, Color.WHITE);
+        btnPlayAgain.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnPlayAgain.addActionListener(e -> {
+            SudokuDifficulty diff = state == null ? SudokuDifficulty.MEDIUM : state.difficulty;
+            gamePanel.setEnabled(true);
+            dialog.dispose();
+            startNewGame(diff);
+            currentView = "game";
+            viewLayout.show(rootPanel, "game");
+        });
+
+        JButton btnMenu = createFooterButton("Kembali ke Menu", WOOD, Color.WHITE);
+        btnMenu.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnMenu.addActionListener(e -> {
+            gamePanel.setEnabled(true);
+            dialog.dispose();
+            menuButtonActionPerformed(null);
+        });
+
+        overlay.add(Box.createVerticalGlue());
+        overlay.add(lbTitle);  overlay.add(Box.createVerticalStrut(12));
+        overlay.add(lbName);   overlay.add(Box.createVerticalStrut(16));
+        overlay.add(lbSub);    overlay.add(Box.createVerticalStrut(12));
+        overlay.add(lbTime);   overlay.add(Box.createVerticalStrut(24));
+        addSeparator(overlay);  overlay.add(Box.createVerticalStrut(16));
+        overlay.add(lbPanel);  overlay.add(Box.createVerticalStrut(24));
+        addSeparator(overlay);  overlay.add(Box.createVerticalStrut(16));
+        overlay.add(btnPlayAgain); overlay.add(Box.createVerticalStrut(10));
+        overlay.add(btnMenu);
+        overlay.add(Box.createVerticalGlue());
+
+        dialog.setContentPane(overlay);
+        dialog.setResizable(false);
+        dialog.setVisible(true);
+        gamePanel.setEnabled(true);
+    }
+
+    private void showLoseOverlay() {
+        JDialog dialog = new JDialog(this, "Game Selesai", true);
+        dialog.setUndecorated(true);
+        dialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        dialog.setSize(getSize());
+        dialog.setLocationRelativeTo(this);
+        gamePanel.setEnabled(false);
+
+        SudokuGradientPanel overlay = new SudokuGradientPanel(
+                new Color(88, 72, 56), new Color(169, 146, 110));
+        overlay.setLayout(new BoxLayout(overlay, BoxLayout.Y_AXIS));
+        overlay.setBorder(BorderFactory.createEmptyBorder(100, 50, 100, 50));
+
+        JLabel lbTitle  = createOverlayLabel("❌ GAME SELESAI ❌",                  52, TEXT_ON_DARK);
+        JLabel lbSub    = createOverlayLabel("Maaf, Anda Gagal Menyelesaikan Game", 24, new Color(255, 150, 150));
+        JLabel lbMsg    = createOverlayLabel("Jangan Menyerah! Coba Lagi!",         20, new Color(248, 243, 223));
+
+        JButton btnPlayAgain = createFooterButton("Main Lagi", ACCENT, Color.WHITE);
+        btnPlayAgain.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnPlayAgain.addActionListener(e -> {
+            SudokuDifficulty diff = state == null ? SudokuDifficulty.MEDIUM : state.difficulty;
+            gamePanel.setEnabled(true);
+            dialog.dispose();
+            startNewGame(diff);
+            currentView = "game";
+            viewLayout.show(rootPanel, "game");
+        });
+
+        JButton btnMenu = createFooterButton("Kembali ke Menu", WOOD, Color.WHITE);
+        btnMenu.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnMenu.addActionListener(e -> {
+            gamePanel.setEnabled(true);
+            dialog.dispose();
+            menuButtonActionPerformed(null);
+        });
+
+        overlay.add(Box.createVerticalGlue());
+        overlay.add(lbTitle); overlay.add(Box.createVerticalStrut(16));
+        overlay.add(lbSub);   overlay.add(Box.createVerticalStrut(12));
+        overlay.add(lbMsg);   overlay.add(Box.createVerticalStrut(40));
+        addSeparator(overlay); overlay.add(Box.createVerticalStrut(32));
+        overlay.add(btnPlayAgain); overlay.add(Box.createVerticalStrut(10));
+        overlay.add(btnMenu);
+        overlay.add(Box.createVerticalGlue());
+
+        dialog.setContentPane(overlay);
+        dialog.setResizable(false);
+        dialog.setVisible(true);
+        gamePanel.setEnabled(true);
+    }
+
+    // =========================================================================
+    // UI HELPER METHODS
+    // =========================================================================
+    private void setSelectedSymbol(String symbol) {
+        selectedSymbol = symbol;
+        for (JButton btn : symbolButtons) {
+            String val  = (String) btn.getClientProperty("symbol");
+            boolean sel = symbol.equals(val);
+            Color baseBg = (Color) btn.getClientProperty("baseBg");
+            Color baseFg = (Color) btn.getClientProperty("baseFg");
+            btn.setBackground(sel ? ACCENT      : baseBg);
+            btn.setForeground(sel ? Color.WHITE : baseFg);
+        }
+    }
+
+    private void registerSymbolButton(JButton btn, String symbol) {
+        btn.putClientProperty("symbol", symbol);
+        btn.putClientProperty("baseBg", btn.getBackground());
+        btn.putClientProperty("baseFg", btn.getForeground());
+        btn.addActionListener(this::symbolButtonActionPerformed);
+        symbolButtons.add(btn);
+    }
+
+    private JButton createChoiceButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setBackground(new Color(248, 244, 235));
+        btn.setForeground(new Color(70, 62, 52));
+        btn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(198, 177, 151)),
+            BorderFactory.createEmptyBorder(6, 10, 6, 10)));
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+    private JButton createFooterButton(String text, Color bg, Color fg) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setBackground(bg);
+        btn.setForeground(fg);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(166, 144, 112)),
+            BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+    private void styleFooterButton(JButton btn, Color bg, Color fg) {
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setBackground(bg);
+        btn.setForeground(fg);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(166, 144, 112)),
+            BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private void styleRadioButton(JRadioButton rb) {
+        rb.setOpaque(false);
+        rb.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        rb.setForeground(new Color(66, 58, 49));
+    }
+
+    private JLabel createOverlayLabel(String text, int size, Color color) {
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, size));
+        lbl.setForeground(color);
+        lbl.setAlignmentX(Component.CENTER_ALIGNMENT);
+        return lbl;
+    }
+
+    private void addSeparator(JPanel panel) {
+        JSeparator sep = new JSeparator();
+        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 2));
+        panel.add(sep);
     }
 
     private JPanel buildLeaderboardPanel() {
@@ -735,8 +908,7 @@ class SudokuGameFrame extends JFrame {
         card.setBackground(new Color(255, 249, 240, 232));
         card.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(new Color(195, 176, 148)),
-            BorderFactory.createEmptyBorder(12, 16, 12, 16)
-        ));
+            BorderFactory.createEmptyBorder(12, 16, 12, 16)));
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setMaximumSize(new Dimension(520, 220));
         card.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -757,175 +929,41 @@ class SudokuGameFrame extends JFrame {
             card.add(empty);
             return card;
         }
-        int index = 1;
+        int idx = 1;
         for (SudokuLeaderboardEntry entry : entries) {
-            String rowText = index + ". " + entry.playerName + " - " + entry.getDuration()
+            String rowText = idx + ". " + entry.playerName + " - " + entry.getDuration()
                     + " (" + entry.difficulty.getLabel() + ")";
             JLabel row = new JLabel(rowText);
             row.setFont(new Font("Segoe UI", Font.PLAIN, 13));
             row.setForeground(new Color(92, 78, 62));
-            row.setHorizontalAlignment(SwingConstants.CENTER);
             row.setAlignmentX(Component.CENTER_ALIGNMENT);
             row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
             card.add(row);
-            index++;
+            idx++;
         }
         return card;
-    }
-
-    private void showWinOverlay() {
-        String winner   = (playerName == null || playerName.isEmpty()) ? "Pemain" : playerName;
-        String duration = formatDuration(elapsedSeconds);
-
-        JDialog dialog = new JDialog(this, "Selesai", true);
-        dialog.setUndecorated(true);
-        dialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-        // ── FIX 1: size the overlay to fill this window, not the whole screen.
-        //    The original code used Toolkit.getDefaultToolkit().getScreenSize() which
-        //    on multi-monitor setups could position the dialog on the wrong screen.
-        dialog.setSize(getSize());
-        dialog.setLocationRelativeTo(this);
-
-        gamePanel.setEnabled(false);
-
-        SudokuGradientPanel overlay = new SudokuGradientPanel(
-            new Color(77, 90, 56), new Color(164, 170, 108));
-        overlay.setLayout(new BoxLayout(overlay, BoxLayout.Y_AXIS));
-        overlay.setBorder(BorderFactory.createEmptyBorder(100, 50, 100, 50));
-
-        JLabel title    = createOverlayLabel("🎉 SELAMAT 🎉",     52, TEXT_ON_DARK);
-        JLabel nameLabel = createOverlayLabel("Pemain: " + winner, 32, new Color(255, 215, 0));
-        JLabel subtitle = createOverlayLabel("Anda Berhasil Menyelesaikan SUDOKU", 22,
-                new Color(248, 243, 223));
-        JLabel time     = createOverlayLabel("⏱️ Waktu: " + duration, 20, new Color(200, 255, 200));
-
-        JPanel lb = buildLeaderboardPanel();
-
-        JButton playAgainButton = createButton("Main Lagi", ACCENT, Color.WHITE);
-        playAgainButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        playAgainButton.addActionListener(event -> {
-            SudokuDifficulty diff = state == null ? SudokuDifficulty.MEDIUM : state.difficulty;
-            gamePanel.setEnabled(true);
-            dialog.dispose();
-            startNewGame(diff);
-            currentView = "game";
-            viewLayout.show(rootPanel, "game");
-        });
-
-        JButton menuButton = createButton("Kembali ke Menu", WOOD, Color.WHITE);
-        menuButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        menuButton.addActionListener(event -> {
-            gamePanel.setEnabled(true);
-            dialog.dispose();
-            showMenu();
-        });
-
-        overlay.add(Box.createVerticalGlue());
-        overlay.add(title);      overlay.add(Box.createVerticalStrut(12));
-        overlay.add(nameLabel);  overlay.add(Box.createVerticalStrut(16));
-        overlay.add(subtitle);   overlay.add(Box.createVerticalStrut(12));
-        overlay.add(time);       overlay.add(Box.createVerticalStrut(24));
-        addSeparator(overlay);   overlay.add(Box.createVerticalStrut(16));
-        overlay.add(lb);         overlay.add(Box.createVerticalStrut(24));
-        addSeparator(overlay);   overlay.add(Box.createVerticalStrut(16));
-        overlay.add(playAgainButton); overlay.add(Box.createVerticalStrut(10));
-        overlay.add(menuButton);
-        overlay.add(Box.createVerticalGlue());
-
-        dialog.setContentPane(overlay);
-        dialog.setResizable(false);
-        dialog.setVisible(true);
-        gamePanel.setEnabled(true);
-    }
-
-    private void showLoseOverlay() {
-        JDialog dialog = new JDialog(this, "Game Selesai", true);
-        dialog.setUndecorated(true);
-        dialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-        // ── FIX 1: same fix — size relative to this window, not the screen
-        dialog.setSize(getSize());
-        dialog.setLocationRelativeTo(this);
-
-        gamePanel.setEnabled(false);
-
-        SudokuGradientPanel overlay = new SudokuGradientPanel(
-            new Color(88, 72, 56), new Color(169, 146, 110));
-        overlay.setLayout(new BoxLayout(overlay, BoxLayout.Y_AXIS));
-        overlay.setBorder(BorderFactory.createEmptyBorder(100, 50, 100, 50));
-
-        JLabel title    = createOverlayLabel("❌ GAME SELESAI ❌",                    52, TEXT_ON_DARK);
-        JLabel subtitle = createOverlayLabel("Maaf, Anda Gagal Menyelesaikan Game",   24, new Color(255, 150, 150));
-        JLabel message  = createOverlayLabel("Jangan Menyerah! Coba Lagi!",           20, new Color(248, 243, 223));
-
-        JButton playAgainButton = createButton("Main Lagi", ACCENT, Color.WHITE);
-        playAgainButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        playAgainButton.addActionListener(event -> {
-            SudokuDifficulty diff = state == null ? SudokuDifficulty.MEDIUM : state.difficulty;
-            gamePanel.setEnabled(true);
-            dialog.dispose();
-            startNewGame(diff);
-            currentView = "game";
-            viewLayout.show(rootPanel, "game");
-        });
-
-        JButton menuButton = createButton("Kembali ke Menu", WOOD, Color.WHITE);
-        menuButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        menuButton.addActionListener(event -> {
-            gamePanel.setEnabled(true);
-            dialog.dispose();
-            showMenu();
-        });
-
-        overlay.add(Box.createVerticalGlue());
-        overlay.add(title);    overlay.add(Box.createVerticalStrut(16));
-        overlay.add(subtitle); overlay.add(Box.createVerticalStrut(12));
-        overlay.add(message);  overlay.add(Box.createVerticalStrut(40));
-        addSeparator(overlay); overlay.add(Box.createVerticalStrut(32));
-        overlay.add(playAgainButton); overlay.add(Box.createVerticalStrut(10));
-        overlay.add(menuButton);
-        overlay.add(Box.createVerticalGlue());
-
-        dialog.setContentPane(overlay);
-        dialog.setResizable(false);
-        dialog.setVisible(true);
-        gamePanel.setEnabled(true);
-    }
-
-    // ── helpers for overlay creation ──────────────────────────────────────────
-    private JLabel createOverlayLabel(String text, int size, Color color) {
-        JLabel label = new JLabel(text);
-        label.setFont(new Font("Segoe UI", Font.BOLD, size));
-        label.setForeground(color);
-        label.setAlignmentX(Component.CENTER_ALIGNMENT);
-        return label;
-    }
-
-    private void addSeparator(JPanel panel) {
-        JSeparator sep = new JSeparator();
-        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 2));
-        panel.add(sep);
     }
 
     private void lockBoard() {
         boardLocked = true;
         int size = board.getSize();
-        for (int row = 0; row < size; row++)
-            for (int col = 0; col < size; col++)
-                if (!cells[row][col].isGiven()) cells[row][col].setEditable(false);
+        for (int r = 0; r < size; r++)
+            for (int c = 0; c < size; c++)
+                if (!cells[r][c].isGiven()) cells[r][c].setEditable(false);
     }
 
     private void startTimer() {
         stopTimer();
-        timer = new Timer(1000, event -> {
+        gameTimer = new Timer(1000, e -> {
             elapsedSeconds++;
             if (state != null) state.elapsedSeconds = elapsedSeconds;
             updateTimerLabel();
         });
-        timer.start();
+        gameTimer.start();
     }
 
     private void stopTimer() {
-        if (timer != null) { timer.stop(); timer = null; }
+        if (gameTimer != null) { gameTimer.stop(); gameTimer = null; }
     }
 
     private void updateTimerLabel() {
@@ -940,129 +978,138 @@ class SudokuGameFrame extends JFrame {
         return String.format(Locale.US, "%02d:%02d", seconds / 60, seconds % 60);
     }
 
-    private void showError(String message) {
-        JOptionPane.showMessageDialog(this, message, "Peringatan", JOptionPane.WARNING_MESSAGE);
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  All classes below are unchanged from the original
-// ─────────────────────────────────────────────────────────────────────────────
-
-class SudokuMenuPanel extends SudokuGradientPanel {
-    private final JTextField  nameField;
-    private final JRadioButton easyButton;
-    private final JRadioButton mediumButton;
-    private final JRadioButton highButton;
-    private final JButton      startButton;
-    private final JButton      exitButton;
-
-    SudokuMenuPanel() {
-        super(new Color(82, 90, 56), new Color(145, 132, 80));
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-
-        JLabel title = new JLabel("Sudoku Classic");
-        title.setFont(new Font("Georgia", Font.BOLD, 42));
-        title.setForeground(new Color(252, 245, 233));
-        title.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel subtitle = new JLabel("Tantang logikamu dan kejar waktu terbaik.");
-        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        subtitle.setForeground(new Color(230, 219, 201));
-        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JPanel card = new JPanel();
-        card.setBackground(new Color(255, 249, 240, 235));
-        card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(204, 181, 153)),
-            BorderFactory.createEmptyBorder(24, 28, 24, 28)
-        ));
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setMaximumSize(new Dimension(520, 360));
-        card.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel nameLabel = new JLabel("Nama Pemain");
-        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        nameField = new JTextField();
-        nameField.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        nameField.setMaximumSize(new Dimension(480, 38));
-        nameField.setAlignmentX(Component.CENTER_ALIGNMENT);
-        nameField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(200, 187, 170)),
-            BorderFactory.createEmptyBorder(6, 10, 6, 10)
-        ));
-
-        JLabel difficultyLabel = new JLabel("Pilih Kesulitan");
-        difficultyLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        difficultyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JPanel difficultyPanel = new JPanel(new GridLayout(1, 3, 12, 12));
-        difficultyPanel.setOpaque(false);
-        difficultyPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        easyButton   = new JRadioButton(SudokuDifficulty.EASY.getLabel());
-        mediumButton = new JRadioButton(SudokuDifficulty.MEDIUM.getLabel());
-        highButton   = new JRadioButton(SudokuDifficulty.HIGH.getLabel());
-
-        ButtonGroup group = new ButtonGroup();
-        group.add(easyButton); group.add(mediumButton); group.add(highButton);
-        easyButton.setSelected(true);
-
-        styleRadio(easyButton); styleRadio(mediumButton); styleRadio(highButton);
-
-        difficultyPanel.add(easyButton);
-        difficultyPanel.add(mediumButton);
-        difficultyPanel.add(highButton);
-
-        startButton = new JButton("Mulai Bermain");
-        startButton.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        startButton.setForeground(Color.WHITE);
-        startButton.setBackground(new Color(84, 120, 77));
-        startButton.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
-        startButton.setFocusPainted(false);
-        startButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        startButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        exitButton = new JButton("Keluar");
-        exitButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        exitButton.setForeground(new Color(70, 62, 52));
-        exitButton.setBackground(new Color(232, 224, 208));
-        exitButton.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
-        exitButton.setFocusPainted(false);
-        exitButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        exitButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        card.add(nameLabel);       card.add(Box.createVerticalStrut(8));
-        card.add(nameField);       card.add(Box.createVerticalStrut(18));
-        card.add(difficultyLabel); card.add(Box.createVerticalStrut(10));
-        card.add(difficultyPanel); card.add(Box.createVerticalStrut(22));
-        card.add(startButton);     card.add(Box.createVerticalStrut(10));
-        card.add(exitButton);
-
-        add(Box.createVerticalGlue());
-        add(title);    add(Box.createVerticalStrut(6));
-        add(subtitle); add(Box.createVerticalStrut(26));
-        add(card);
-        add(Box.createVerticalGlue());
-    }
-
-    public void setStartAction(java.awt.event.ActionListener l) { startButton.addActionListener(l); }
-    public void setExitAction(java.awt.event.ActionListener l)  { exitButton.addActionListener(l);  }
-    public String getPlayerName() { return nameField.getText().trim(); }
-
-    public SudokuDifficulty getSelectedDifficulty() {
-        if (mediumButton.isSelected()) return SudokuDifficulty.MEDIUM;
-        if (highButton.isSelected())   return SudokuDifficulty.HIGH;
+    private SudokuDifficulty getSelectedDifficulty() {
+        if (menuMediumRadio.isSelected()) return SudokuDifficulty.MEDIUM;
+        if (menuHighRadio.isSelected())   return SudokuDifficulty.HIGH;
         return SudokuDifficulty.EASY;
     }
 
-    private void styleRadio(JRadioButton b) {
-        b.setOpaque(false);
-        b.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        b.setForeground(new Color(66, 58, 49));
+    private void shutdownApplication() {
+        stopTimer();
+        dispose();
+        System.exit(0);
     }
+
+    private void showError(String message) {
+        JOptionPane.showMessageDialog(this, message, "Peringatan", JOptionPane.WARNING_MESSAGE);
+    }
+
+    private void installEscapeShortcut() {
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+            .put(KeyStroke.getKeyStroke("ESCAPE"), "exitFS");
+        getRootPane().getActionMap().put("exitFS", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) {
+                if (!isUndecorated()) return;
+                setVisible(false);
+                dispose();
+                setUndecorated(false);
+                setResizable(true);
+                setMinimumSize(new Dimension(960, 720));
+                setExtendedState(JFrame.MAXIMIZED_BOTH);
+                setVisible(true);
+            }
+        });
+    }
+
+    // =========================================================================
+    // MAIN METHOD (NetBeans style)
+    // =========================================================================
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(SudokuGame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(SudokuGame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(SudokuGame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(SudokuGame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new SudokuGame().setVisible(true);
+            }
+        });
+    }
+
+    // =========================================================================
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    // =========================================================================
+
+    // Layout
+    private CardLayout              viewLayout;
+    private javax.swing.JPanel      rootPanel;
+
+    // Menu components
+    private javax.swing.JPanel      menuPanel;
+    private javax.swing.JTextField  menuNameField;
+    private javax.swing.JRadioButton menuEasyRadio;
+    private javax.swing.JRadioButton menuMediumRadio;
+    private javax.swing.JRadioButton menuHighRadio;
+    private ButtonGroup             menuDifficultyGroup;
+    private javax.swing.JButton     menuStartButton;
+    private javax.swing.JButton     menuExitButton;
+
+    // Game panel
+    private javax.swing.JPanel      gamePanel;
+
+    // Header components
+    private SudokuGradientPanel     headerPanel;
+    private javax.swing.JLabel      titleLabel;
+    private javax.swing.JLabel      statusLabel;
+    private javax.swing.JLabel      difficultyLabel;
+    private javax.swing.JLabel      playerLabel;
+    private javax.swing.JLabel      timerLabel;
+    private javax.swing.JLabel      attemptsLabel;
+
+    // Grid area
+    private javax.swing.JPanel      gridPanel;
+
+    // Footer buttons
+    private javax.swing.JPanel      footerPanel;
+    private javax.swing.JButton     undoButton;
+    private javax.swing.JButton     redoButton;
+    private javax.swing.JButton     hintButton;
+    private javax.swing.JButton     checkButton;
+    private javax.swing.JButton     saveButton;
+    private javax.swing.JButton     loadButton;
+    private javax.swing.JButton     menuButton;
+    private javax.swing.JButton     resetButton;
+
+    // End of variables declaration//GEN-END:variables
+}
+
+// =============================================================================
+// SUPPORTING CLASSES
+// =============================================================================
+
+enum SudokuDifficulty {
+    EASY("Mudah 4x4", 4, 2, 6),
+    MEDIUM("Sedang 9x9", 9, 3, 40),
+    HIGH("Sulit 16x16", 16, 4, 160);
+
+    private final String label;
+    private final int size, base, removals;
+
+    SudokuDifficulty(String label, int size, int base, int removals) {
+        this.label = label; this.size = size; this.base = base; this.removals = removals;
+    }
+
+    public String getLabel()    { return label; }
+    public int    getSize()     { return size; }
+    public int    getBase()     { return base; }
+    public int    getRemovals() { return removals; }
 }
 
 class SudokuGameBoard {
@@ -1108,8 +1155,8 @@ class SudokuGameBoard {
         return s;
     }
 
-    public int getSize()    { return size; }
-    public int getBase()    { return base; }
+    public int    getSize()    { return size; }
+    public int    getBase()    { return base; }
     public char[] getSymbols() { return Arrays.copyOf(symbols, symbols.length); }
 
     public int symbolToValue(String text) {
@@ -1140,9 +1187,7 @@ class SudokuGameBoard {
             }
 
         puzzle = copyGrid(solution);
-        int totalCells  = size * size;
-        int minGivens   = (int) Math.ceil(totalCells * 0.35);
-        int maxRemovals = Math.max(0, totalCells - minGivens);
+        int maxRemovals = Math.max(0, size * size - (int) Math.ceil(size * size * 0.35));
         removeCells(Math.min(removals, maxRemovals));
     }
 
@@ -1324,8 +1369,8 @@ class SudokuSoundPlayer {
 }
 
 class SudokuLeaderboardEntry {
-    final String           playerName;
-    final int              seconds;
+    final String playerName;
+    final int    seconds;
     final SudokuDifficulty difficulty;
 
     SudokuLeaderboardEntry(String n, int s, SudokuDifficulty d) {
@@ -1338,7 +1383,7 @@ class SudokuLeaderboardEntry {
 }
 
 class SudokuLeaderboard {
-    private final int                        limit;
+    private final int limit;
     private final List<SudokuLeaderboardEntry> entries = new ArrayList<>();
 
     SudokuLeaderboard(int limit) { this.limit = limit; }
@@ -1353,16 +1398,16 @@ class SudokuLeaderboard {
 }
 
 class SudokuGameCell extends JTextField {
-    private static final Color GIVEN_BG      = new Color(224, 219, 200);
-    private static final Color INPUT_BG      = new Color(247, 244, 233);
-    private static final Color SELECTED_BG   = new Color(255, 220, 148);
+    private static final Color GIVEN_BG        = new Color(224, 219, 200);
+    private static final Color INPUT_BG        = new Color(247, 244, 233);
+    private static final Color SELECTED_BG     = new Color(255, 220, 148);
     private static final Color SELECTION_PULSE = new Color(255, 238, 196);
-    private static final Color PEER_BG       = new Color(239, 233, 214);
-    private static final Color SAME_BG       = new Color(212, 226, 244);
-    private static final Color ERROR_BG      = new Color(255, 196, 196);
-    private static final Color SUCCESS_BG    = new Color(204, 235, 206);
-    private static final Color GIVEN_FG      = new Color(61, 54, 44);
-    private static final Color INPUT_FG      = new Color(35, 35, 35);
+    private static final Color PEER_BG         = new Color(239, 233, 214);
+    private static final Color SAME_BG         = new Color(212, 226, 244);
+    private static final Color ERROR_BG        = new Color(255, 196, 196);
+    private static final Color SUCCESS_BG      = new Color(204, 235, 206);
+    private static final Color GIVEN_FG        = new Color(61, 54, 44);
+    private static final Color INPUT_FG        = new Color(35, 35, 35);
 
     private final boolean given;
     private final int row, col, base;
@@ -1390,13 +1435,13 @@ class SudokuGameCell extends JTextField {
     public int getRow()      { return row; }
     public int getCol()      { return col; }
 
-    public void setError(boolean e)            { if (!given) { error = e; updateStyle(); } }
-    public void setSelected(boolean s)         { selected = s; updateStyle(); }
-    public void setPeerHighlight(boolean p)    { peerHighlight = p; updateStyle(); }
-    public void setSameSymbol(boolean s)       { sameSymbol = s; updateStyle(); }
-    public void animateSuccess()               { animatePulse(SUCCESS_BG, 6, 30); }
-    public void animateError()                 { animatePulse(ERROR_BG, 6, 30); }
-    public void animateSelection()             { animatePulse(SELECTION_PULSE, 6, 30); }
+    public void setError(boolean e)         { if (!given) { error = e; updateStyle(); } }
+    public void setSelected(boolean s)      { selected = s; updateStyle(); }
+    public void setPeerHighlight(boolean p) { peerHighlight = p; updateStyle(); }
+    public void setSameSymbol(boolean s)    { sameSymbol = s; updateStyle(); }
+    public void animateSuccess()            { animatePulse(SUCCESS_BG, 6, 30); }
+    public void animateError()              { animatePulse(ERROR_BG, 6, 30); }
+    public void animateSelection()          { animatePulse(SELECTION_PULSE, 6, 30); }
 
     private void updateStyle() {
         Color bg = given ? GIVEN_BG : INPUT_BG;
@@ -1429,8 +1474,7 @@ class SudokuGameCell extends JTextField {
         return new Color(
             Math.round(s.getRed()   + (e.getRed()   - s.getRed())   * t),
             Math.round(s.getGreen() + (e.getGreen() - s.getGreen()) * t),
-            Math.round(s.getBlue()  + (e.getBlue()  - s.getBlue())  * t)
-        );
+            Math.round(s.getBlue()  + (e.getBlue()  - s.getBlue())  * t));
     }
 
     private javax.swing.border.Border buildBorder() {
@@ -1440,8 +1484,7 @@ class SudokuGameCell extends JTextField {
             col % base == 0       ? thick : thin,
             (row + 1) % base == 0 ? thick : thin,
             (col + 1) % base == 0 ? thick : thin,
-            gridLine
-        );
+            gridLine);
     }
 }
 
