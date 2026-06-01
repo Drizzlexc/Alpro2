@@ -20,9 +20,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -79,6 +81,8 @@ public class SudokuGame extends javax.swing.JFrame {
     private static final Color TEXT_SUBTLE  = new Color(86,   80,  68);
     private static final Color GRID_LINE    = new Color(108,  95,  73);
     private static final Color WOOD         = new Color(176, 136,  92);
+    private static final String BGM_FILE    = "sounds/mbg.mp3";
+    private static final int    BGM_VOLUME  = 60;
 
     private SudokuGameBoard    board;
     private SudokuGameState    state;
@@ -86,6 +90,7 @@ public class SudokuGame extends javax.swing.JFrame {
     private final SudokuHistory     history     = new SudokuHistory();
     private final SudokuLeaderboard leaderboard = new SudokuLeaderboard(10);
     private final SudokuSoundPlayer soundPlayer = new SudokuSoundPlayer();
+    private final SudokuMusicPlayer musicPlayer = new SudokuMusicPlayer();
 
     private SudokuGameCell[][] cells;
     private Timer  gameTimer;
@@ -178,6 +183,8 @@ public class SudokuGame extends javax.swing.JFrame {
 
         // ESC keluar full-screen
         installEscapeShortcut();
+
+        musicPlayer.startLoop(BGM_FILE, BGM_VOLUME);
 
         viewLayout.show(rootPanel, "menu");
     }
@@ -986,6 +993,7 @@ public class SudokuGame extends javax.swing.JFrame {
 
     private void shutdownApplication() {
         stopTimer();
+        musicPlayer.stop();
         dispose();
         System.exit(0);
     }
@@ -1334,6 +1342,31 @@ class SudokuValidator {
     }
 }
 
+final class SudokuPaths {
+    private SudokuPaths() {}
+
+    static File findDirUp(String dirName) {
+        File dir = new File(System.getProperty("user.dir"));
+        for (int i = 0; i < 6 && dir != null; i++) {
+            File candidate = new File(dir, dirName);
+            if (candidate.isDirectory()) return candidate;
+            dir = dir.getParentFile();
+        }
+        return new File(System.getProperty("user.dir"), dirName);
+    }
+
+    static File findFileUp(String relativePath) {
+        if (relativePath == null || relativePath.isEmpty()) return null;
+        File dir = new File(System.getProperty("user.dir"));
+        for (int i = 0; i < 6 && dir != null; i++) {
+            File candidate = new File(dir, relativePath);
+            if (candidate.isFile()) return candidate;
+            dir = dir.getParentFile();
+        }
+        return null;
+    }
+}
+
 enum SoundEffect {
     CORRECT("correct.wav"), ERROR("error.wav"), WIN("win.wav"),
     LOSE("lose.wav"), HINT("hint.wav");
@@ -1343,7 +1376,7 @@ enum SoundEffect {
 
 class SudokuSoundPlayer {
     private final Map<SoundEffect, Clip> clips   = new EnumMap<>(SoundEffect.class);
-    private final File                   baseDir = new File("sounds");
+    private final File                   baseDir = SudokuPaths.findDirUp("sounds");
 
     void play(SoundEffect effect) {
         Clip clip = loadClip(effect);
@@ -1364,6 +1397,170 @@ class SudokuSoundPlayer {
             return clip;
         } catch (IOException | UnsupportedAudioFileException | LineUnavailableException ex) {
             clips.put(effect, null); return null;
+        }
+    }
+}
+
+class SudokuMusicPlayer {
+    private final File baseDir = SudokuPaths.findDirUp("sounds");
+    private volatile ClassLoader jlayerLoader;
+    private volatile boolean running;
+    private volatile Object currentPlayer;
+    private Thread worker;
+
+    void startLoop(String filePath, int volumePercent) {
+        stop();
+        File file = resolveFile(filePath);
+        if (file == null || !file.exists()) {
+            Toolkit.getDefaultToolkit().beep();
+            return;
+        }
+        if (!isJLayerAvailable()) {
+            Toolkit.getDefaultToolkit().beep();
+            return;
+        }
+        running = true;
+        worker = new Thread(() -> loop(file, volumePercent), "SudokuBgm");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    void stop() {
+        running = false;
+        closeCurrentPlayer();
+        if (worker != null) {
+            worker.interrupt();
+            worker = null;
+        }
+    }
+
+    private void loop(File file, int volumePercent) {
+        while (running) {
+            playOnce(file, volumePercent);
+        }
+    }
+
+    private void playOnce(File file, int volumePercent) {
+        try (InputStream in = new BufferedInputStream(new FileInputStream(file))) {
+            Object audioDevice = createAudioDevice(volumePercent);
+            Object player = createAdvancedPlayer(in, audioDevice);
+            currentPlayer = player;
+            invokeNoArgs(player, "play");
+        } catch (Exception ex) {
+            running = false;
+        } finally {
+            currentPlayer = null;
+        }
+    }
+
+    private File resolveFile(String filePath) {
+        if (filePath == null || filePath.isEmpty()) return null;
+        File file = new File(filePath);
+        if (file.isAbsolute() && file.exists()) return file;
+        File candidate = new File(baseDir, filePath);
+        if (candidate.exists()) return candidate;
+        File fallback = SudokuPaths.findFileUp(filePath);
+        return fallback != null ? fallback : file;
+    }
+
+    private boolean isJLayerAvailable() {
+        return getJLayerLoader() != null;
+    }
+
+    private Object createAdvancedPlayer(InputStream in, Object audioDevice) throws Exception {
+        ClassLoader loader = getJLayerLoader();
+        if (loader == null) throw new ClassNotFoundException("JLayer not found");
+        Class<?> audioDeviceType = Class.forName("javazoom.jl.player.AudioDevice", true, loader);
+        Class<?> playerClass = Class.forName("javazoom.jl.player.advanced.AdvancedPlayer", true, loader);
+        try {
+            return playerClass.getConstructor(InputStream.class, audioDeviceType)
+                              .newInstance(in, audioDevice);
+        } catch (NoSuchMethodException ex) {
+            return playerClass.getConstructor(InputStream.class).newInstance(in);
+        }
+    }
+
+    private Object createAudioDevice(int volumePercent) throws Exception {
+        ClassLoader loader = getJLayerLoader();
+        if (loader == null) throw new ClassNotFoundException("JLayer not found");
+        Class<?> deviceClass = Class.forName("javazoom.jl.player.JavaSoundAudioDevice", true, loader);
+        Object device = deviceClass.getDeclaredConstructor().newInstance();
+        applyVolume(device, volumePercent);
+        return device;
+    }
+
+    private ClassLoader getJLayerLoader() {
+        ClassLoader loader = jlayerLoader;
+        if (loader != null) return loader;
+
+        ClassLoader context = Thread.currentThread().getContextClassLoader();
+        if (canLoadJLayer(context)) {
+            jlayerLoader = context;
+            return context;
+        }
+
+        File jar = SudokuPaths.findFileUp("lib/jlayer-1.0.1.jar");
+        if (jar != null) {
+            try {
+                java.net.URL jarUrl = jar.toURI().toURL();
+                ClassLoader urlLoader = new java.net.URLClassLoader(new java.net.URL[] { jarUrl }, context);
+                if (canLoadJLayer(urlLoader)) {
+                    jlayerLoader = urlLoader;
+                    return urlLoader;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
+    }
+
+    private boolean canLoadJLayer(ClassLoader loader) {
+        if (loader == null) return false;
+        try {
+            Class.forName("javazoom.jl.player.advanced.AdvancedPlayer", true, loader);
+            Class.forName("javazoom.jl.player.JavaSoundAudioDevice", true, loader);
+            return true;
+        } catch (ClassNotFoundException ex) {
+            return false;
+        }
+    }
+
+    private void applyVolume(Object audioDevice, int volumePercent) {
+        float gain = volumeToGain(volumePercent);
+        try {
+            Method method = audioDevice.getClass().getMethod("setLineGain", float.class);
+            method.invoke(audioDevice, gain);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private float volumeToGain(int volumePercent) {
+        int clamped = Math.max(0, Math.min(100, volumePercent));
+        if (clamped == 0) return -80.0f;
+        double linear = clamped / 100.0;
+        double db = 20.0 * Math.log10(linear);
+        if (db < -80.0) db = -80.0;
+        if (db > 6.0) db = 6.0;
+        return (float) db;
+    }
+
+    private void closeCurrentPlayer() {
+        Object player = currentPlayer;
+        if (player == null) return;
+        invokeIfPresent(player, "close");
+        invokeIfPresent(player, "stop");
+    }
+
+    private void invokeNoArgs(Object target, String name) throws Exception {
+        Method method = target.getClass().getMethod(name);
+        method.invoke(target);
+    }
+
+    private void invokeIfPresent(Object target, String name) {
+        try {
+            Method method = target.getClass().getMethod(name);
+            method.invoke(target);
+        } catch (Exception ignored) {
         }
     }
 }
