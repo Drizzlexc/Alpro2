@@ -239,4 +239,5 @@ Compile error	File terpisah	Pastikan semua class ada dalam satu file SudokuGame.
 
 
 Dokumentasi ini dibuat untuk keperluan tugas Algoritma Pemograman 2.
+
 Institut Teknologi Sepuluh Nopember  |  2026
