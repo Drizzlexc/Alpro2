@@ -5,11 +5,13 @@ Versi 1.0  |  2026
 
 Anggota Kelompok
 
-No.	Nama	NRP
-1	Zaskia Novita Sari	5002251007
-2	Ezequiel Mulyadi	5002251035
-3	Yosua Kharisma Putra	5002251038
-4	Rizky Ronaldo Hutauruk	5002251085
+1.	Zaskia Novita Sari	5002251007
+
+2.	Ezequiel Mulyadi	5002251035
+
+3.	Yosua Kharisma Putra	5002251038
+
+4.	Rizky Ronaldo Hutauruk	5002251085
 
 # 1. Deskripsi Umum
 Sudoku Classic adalah aplikasi permainan puzzle logika berbasis Java Swing yang dikembangkan mengikuti konvensi struktur NetBeans JFrame Form. Program ini menghadirkan pengalaman bermain Sudoku yang lengkap dengan antarmuka grafis yang intuitif, sistem manajemen state yang solid, dan berbagai fitur pendukung seperti undo/redo, hint, save/load, serta musik latar.
