@@ -44,11 +44,17 @@ Jika file suara tidak ditemukan, program tetap berjalan normal (fallback ke beep
 
 # 3. Cara Menjalankan Program
 3.1 Menggunakan NetBeans IDE
+
 1.Buka NetBeans IDE.
+
 2.Pilih menu File > Open Project, lalu arahkan ke folder project SudokuGame.
+
 3.Pastikan semua file .java sudah terdapat dalam satu package/folder yang sama.
+
 4.Jika menggunakan musik MP3, tambahkan jlayer-1.0.1.jar ke Libraries project (klik kanan Libraries > Add JAR/Folder).
+
 5.Klik tombol Run (F6) atau klik kanan file SudokuGame.java > Run File.
+
 6.Program akan terbuka dalam mode fullscreen secara otomatis.
 
 3.2 Menggunakan Command Line (Compile & Run Manual)
